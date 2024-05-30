@@ -10,6 +10,7 @@ class WebApiClient
     # Save Schedule data to database
     def save_schedule_data(week_date)
         response = get_schedule_data(week_date)
+
         if response.success?
             game_week = response.parsed_response["gameWeek"]
 
@@ -51,6 +52,51 @@ class WebApiClient
             end
         else
             Rails.logger.error "Failed to retrieve schedule for #{week_date}: #{response.message}"
+        end
+    end
+
+    # Get Player data from API
+    def get_player_data(teamAbbrev)
+        self.class.get("/roster/#{teamAbbrev}/current")
+    end
+  
+    # Save Player data to database
+    def save_player_data(team)
+        position_groups = ["forwards", "defensemen", "goalies"]
+
+        response = get_player_data(team.abbrev)
+
+        if response.success?
+            # Set all players associated with the current team as inactive
+            Player.where(teamID: team.teamID).update_all(isActive: false)
+
+            # Get position from each position category in the roster
+            position_groups.each do |position_group|
+                next unless response.parsed_response[position_group]
+
+                # Get player data from each position
+                response.parsed_response[position_group].each do |player_data|
+                    player = Player.new(
+                        playerID: player_data["id"],
+                        headshot: player_data["headshot"],
+                        firstName: player_data["firstName"]["default"],
+                        lastName: player_data["lastName"]["default"],
+                        sweaterNumber: player_data["sweaterNumber"],
+                        positionCode: player_data["positionCode"],
+                        shootsCatches: player_data["shootsCatches"],
+                        heightInInches: player_data["heightInInches"],
+                        weightInPounds: player_data["weightInPounds"],
+                        birthDate: player_data["birthDate"],
+                        birthCountry: player_data["birthCountry"],
+                        teamID: team.teamID,
+                        isActive: true
+                    )
+                    
+                    player.save
+                end
+            end
+        else
+            Rails.logger.error "Failed to retrieve roster for #{team.abbrev}: #{response.message}"
         end
     end
 end

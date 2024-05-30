@@ -10,9 +10,28 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_05_28_013713) do
+ActiveRecord::Schema[7.1].define(version: 2024_05_29_232256) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "players", force: :cascade do |t|
+    t.integer "playerID", null: false
+    t.string "headshot"
+    t.string "firstName", null: false
+    t.string "lastName", null: false
+    t.integer "sweaterNumber"
+    t.string "positionCode", null: false
+    t.string "shootsCatches", null: false
+    t.integer "heightInInches", null: false
+    t.integer "weightInPounds", null: false
+    t.string "birthDate", null: false
+    t.string "birthCountry", null: false
+    t.integer "teamID", null: false
+    t.boolean "isActive", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["playerID"], name: "index_players_on_playerID", unique: true
+  end
 
   create_table "schedules", force: :cascade do |t|
     t.string "date"

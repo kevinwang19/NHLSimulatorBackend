@@ -1,5 +1,5 @@
-namespace :schedule do
-desc "Fetch and save initial schedule and teams data"
+namespace :app do
+desc "Fetch and save initial data"
     task fetch_initial: :environment do
         day_interval = 7
         web_api_client = WebApiClient.new
@@ -16,6 +16,13 @@ desc "Fetch and save initial schedule and teams data"
 
         # Populate Teams database after fetching the initial schedule
         api_client.save_team_data(start_date)
-        puts "Fetched all teams from the schedule"
+        puts "Fetched and saved all teams from the schedule"
+
+        teams = Team.order(:abbrev)
+
+        teams.each do |team|
+            web_api_client.save_player_data(team)
+            puts "Fetched and saved players from #{team.abbrev}"
+        end
     end
 end
