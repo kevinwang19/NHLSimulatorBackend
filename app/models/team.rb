@@ -8,4 +8,5 @@ class Team < ApplicationRecord
     # Associations
     has_many :home_games, class_name: 'Schedule', foreign_key: 'homeTeamID'
     has_many :away_games, class_name: 'Schedule', foreign_key: 'awayTeamID'
+    has_many :players, foreign_key: 'teamID', dependent: :destroy
 end
