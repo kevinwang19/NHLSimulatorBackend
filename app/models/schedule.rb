@@ -9,8 +9,4 @@ class Schedule < ApplicationRecord
     validates :homeTeamID, presence: true
     validates :homeTeamAbbrev, presence: true
     validates :homeTeamLogo, presence: true
-
-    # Associations
-    belongs_to :away_team, class_name: 'Team', foreign_key: 'awayTeamID'
-    belongs_to :home_team, class_name: 'Team', foreign_key: 'homeTeamID'
 end

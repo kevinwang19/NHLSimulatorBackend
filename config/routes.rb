@@ -8,4 +8,7 @@ Rails.application.routes.draw do
 
   # Routes for players
   resources :players, only: [:index, :show], param: :teamID, defaults: { format: :json }
+
+  # Routes for stats
+  resources :stats, only: [:index, :show], param: :playerID, defaults: { format: :json }
 end

@@ -29,6 +29,10 @@ class ApiClient
         active_teams.each do |team_id|
             # Check if team is already in the database
             next if Team.exists?(teamID: team_id)
+
+            # Fetch team abbreviation and logo from the schedule, skip if team is not found
+            schedule = Schedule.find_by(awayTeamID: team_id) || Schedule.find_by(homeTeamID: team_id)
+            next unless schedule
     
             team_abbrev = team_id == schedule.awayTeamID ? schedule.awayTeamAbbrev : schedule.homeTeamAbbrev
             team_logo = team_id == schedule.awayTeamID ? schedule.awayTeamLogo : schedule.homeTeamLogo
