@@ -8,7 +8,7 @@ class Team < ApplicationRecord
     validates :logo, presence: true
 
     # Associations
-    has_many :home_games, class_name: 'Schedule', foreign_key: 'homeTeamID', dependent: :destroy
-    has_many :away_games, class_name: 'Schedule', foreign_key: 'awayTeamID', dependent: :destroy
-    has_many :players, foreign_key: 'teamID', dependent: :destroy
+    has_many :home_games, class_name: "Schedule", foreign_key: "homeTeamID", dependent: :destroy
+    has_many :away_games, class_name: "Schedule", foreign_key: "awayTeamID", dependent: :destroy
+    has_many :players, foreign_key: "teamID", dependent: :destroy
 end

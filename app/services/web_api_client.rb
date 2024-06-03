@@ -101,10 +101,7 @@ class WebApiClient
     end
   
     # Save Stat data to database
-    def save_stats_data(player_id, end_stat_season)
-        # Season to start collecting stats from
-        start_stat_season = 20212022
-
+    def save_stats_data(player_id, start_stat_season, end_stat_season)
         response = get_stats_data(player_id)
 
         if response.success?
@@ -112,10 +109,15 @@ class WebApiClient
             position = stats_data["position"]
             season_stats = stats_data.dig("seasonTotals") || []
 
+            # Get stat from each season
             season_stats.each do |season_stat|
+                # Only use stats from the regular season and in the NHL
                 next unless season_stat["gameTypeId"] == 2 && season_stat["leagueAbbrev"] == "NHL"
+                # Only use stats starting from 2021-2022 up until before the current season
                 next unless season_stat["season"] >= start_stat_season && season_stat["season"] <= end_stat_season
-                if position == 'G'
+
+                # Add goalie stats to the GoalieStat table and skater stats to the SkaterStat table
+                if position == "G"
                     goalie_stat = GoalieStat.find_or_initialize_by(
                         playerID: player_id,
                         season: season_stat["season"],
@@ -133,7 +135,7 @@ class WebApiClient
 
                     goalie_stat.save
                 else
-                    player_stat = PlayerStat.find_or_initialize_by(
+                    skater_stat = SkaterStat.find_or_initialize_by(
                         playerID: player_id,
                         season: season_stat["season"],
                         gamesPlayed: season_stat["gamesPlayed"],
@@ -154,7 +156,7 @@ class WebApiClient
                         shots: season_stat["shots"]
                     )
                     
-                    player_stat.save
+                    skater_stat.save
                 end
             end
         else

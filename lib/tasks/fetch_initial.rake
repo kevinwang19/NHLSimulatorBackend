@@ -1,6 +1,11 @@
+require 'csv'
+require_relative '../csv_exporter'
+
 namespace :app do
 desc "Fetch and save initial data"
     task fetch_initial: :environment do
+        include CsvExporter
+
         step_day_interval = 7
 
         web_api_client = WebApiClient.new
@@ -8,6 +13,9 @@ desc "Fetch and save initial data"
 
         start_date = Date.new(2023, 10, 1)
         end_date = Date.new(2024, 4, 30)
+
+        # Season to start collecting stats from
+        start_stat_season = 20192020
         
         # Iterate through each week of the schedule and populate Schedule database
         (start_date..end_date).step(step_day_interval) do |date|
@@ -42,10 +50,23 @@ desc "Fetch and save initial data"
         # Get all players
         players = Player.all
 
+        puts "Preparing stats for all players..."
         # Populate Stats database with the stats from all players
         players.each do |player|
-            web_api_client.save_stats_data(player.playerID, end_stat_season)
-            puts "Fetched and saved stats for #{player.firstName} #{player.lastName}"
+            web_api_client.save_stats_data(player.playerID, start_stat_season, end_stat_season)
         end
+        puts "Fetched and saved stats for all players"
+
+        # Create CSV's for players and stats tables for purpose of machine learning
+        export_to_csv("players")
+        export_to_csv("skater_stats")
+        export_to_csv("goalie_stats")
+
+        ml_client = MlClient.new
+        
+        puts "Preparing prediction stats for all players..."
+        # Populate Stats Prediction databases with the prediction stats for all players
+        ml_client.save_prediction_stats_data()
+        puts "Generated and saved predicted stats for all players"
     end
 end

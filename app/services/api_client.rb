@@ -1,6 +1,6 @@
 class ApiClient
     include HTTParty
-    base_uri 'https://api.nhle.com/stats/rest'
+    base_uri "https://api.nhle.com/stats/rest"
   
     # Get Team data from API
     def get_team_data()

@@ -14,5 +14,5 @@ class GoalieStat < ApplicationRecord
     validates :shutouts, presence: true
 
     # Associations
-    belongs_to :player, foreign_key: 'playerID'
+    belongs_to :player, foreign_key: "playerID"
 end
