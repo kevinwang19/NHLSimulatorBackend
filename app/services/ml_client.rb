@@ -39,7 +39,7 @@ class MlClient
             age = season_year - birth_year
 
             # Call the predict function in the Python script
-            script = "python3 app/services//ml/predict_stats.py predict #{player.positionCode} #{stats.join(" ")} #{age}"
+            script = "python3 app/services//ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")} "
             stdout, stderr, status = Open3.capture3(script)
 
             if status.success?

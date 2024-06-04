@@ -47,26 +47,44 @@ desc "Fetch and save initial data"
             end_stat_season = (start_date.prev_year.to_s + start_date.year.to_s).to_i
         end
 
-        # Get all players
-        players = Player.all
+        # Get relevant players columns
+        players = Player.select(:playerID, :headshot, :firstName, :lastName, :sweaterNumber, 
+                                :positionCode, :shootsCatches, :heightInInches, :weightInPounds, 
+                                :birthDate, :birthCountry, :teamID).all
 
-        puts "Preparing stats for all players..."
-        # Populate Stats database with the stats from all players
-        players.each do |player|
-            web_api_client.save_stats_data(player.playerID, start_stat_season, end_stat_season)
-        end
-        puts "Fetched and saved stats for all players"
-
-        # Create CSV's for players and stats tables for purpose of machine learning
-        export_to_csv("players")
-        export_to_csv("skater_stats")
-        export_to_csv("goalie_stats")
-
-        ml_client = MlClient.new
+        # Data to comapare
+        players_compare = Player.order(:playerID).pluck(:firstName, :lastName, :sweaterNumber, :positionCode, :shootsCatches, :teamID).to_set
+        players_backup_compare = PlayersBackup.order(:playerID).pluck(:firstName, :lastName, :sweaterNumber, :positionCode, :shootsCatches, :teamID).to_set
         
-        puts "Preparing prediction stats for all players..."
-        # Populate Stats Prediction databases with the prediction stats for all players
-        ml_client.save_prediction_stats_data()
-        puts "Generated and saved predicted stats for all players"
+        # If the rosters have changed, then we fetch the player stats again and make the current players the new backup table
+        if players_compare != players_backup_compare
+            # Erase all data in the backup table an insert the updated data
+            PlayersBackup.delete_all
+
+            players.each do |player|
+                PlayersBackup.create(player.attributes)
+            end
+
+            puts "Preparing stats for all players..."
+            # Populate Stats database with the stats from all players
+            players.each do |player|
+                web_api_client.save_stats_data(player.playerID, start_stat_season, end_stat_season)
+            end
+            puts "Fetched and saved stats for all players"
+
+            # Create CSV's for players and stats tables for purpose of machine learning
+            export_to_csv("players")
+            export_to_csv("skater_stats")
+            export_to_csv("goalie_stats")
+
+            ml_client = MlClient.new
+
+            puts "Preparing prediction stats for all players..."
+            # Populate Stats Prediction databases with the prediction stats for all players
+            ml_client.save_prediction_stats_data()
+            puts "Generated and saved predicted stats for all players"
+        else 
+            puts "All stats already loaded"
+        end
     end
 end

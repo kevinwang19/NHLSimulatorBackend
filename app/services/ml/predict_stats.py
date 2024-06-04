@@ -1,10 +1,13 @@
+import os
 import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from joblib import dump, load
 
+# Prepare data of the change in stats of each age group of players
 def load_and_prepare_data():
     # Load data from both databases
     players_df = pd.read_csv("csv/players.csv")
@@ -24,7 +27,7 @@ def load_and_prepare_data():
     merged_goalie_df["seasonStart"] = merged_goalie_df["season"].astype(str).str[:4].astype(int)
     merged_goalie_df["age"] = merged_goalie_df["seasonStart"] - merged_goalie_df["birthDate"].dt.year.astype(int)
 
-    # Step 3: Calculate year-over-year changes in stats
+    # Calculate year-over-year changes in stats
     skater_stat_columns = [
         "gamesPlayed", "goals", "assists", "points", "faceoffWinningPctg",
         "gameWinningGoals", "otGoals", "pim", "plusMinus", "powerPlayGoals",
@@ -46,6 +49,7 @@ def load_and_prepare_data():
 
     return merged_skater_df, merged_goalie_df, skater_stat_columns, goalie_stat_columns
 
+# Train Linear Regression models to fit a trend of stat increases/decreases across the age groups
 def train_and_save_models():
     merged_skater_df, merged_goalie_df, skater_stat_columns, goalie_stat_columns = load_and_prepare_data()
 
@@ -70,25 +74,36 @@ def train_and_save_models():
     goalie_predictor_scaled = goalie_scaler.fit_transform(goalie_predictor)
 
     # Split data into training and testing sets
-    skater_predictor_train, skater_predictor_test, skater_response_train, skater_response_test = train_test_split(skater_predictor_scaled, skater_response, test_size=0.2, random_state=42)
-    goalie_predictor_train, goalie_predictor_test, goalie_response_train, goalie_response_test = train_test_split(goalie_predictor_scaled, goalie_response, test_size=0.2, random_state=42)
+    skater_predictor_train, skater_predictor_test, skater_response_train, skater_response_test = train_test_split(skater_predictor_scaled, skater_response, test_size=0.2)
+    goalie_predictor_train, goalie_predictor_test, goalie_response_train, goalie_response_test = train_test_split(goalie_predictor_scaled, goalie_response, test_size=0.2)
 
-    # Model Training
-    skater_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    # Model training using Linear Regression
+    skater_model = LinearRegression() 
     skater_model.fit(skater_predictor_train, skater_response_train)
 
-    goalie_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    goalie_model = LinearRegression() #RandomForestRegressor(n_estimators=100)
     goalie_model.fit(goalie_predictor_train, goalie_response_train)
-          
-    # Save the scalers and the models for future use
-    dump(skater_scaler, "app/services/ml/skater_scaler.joblib")
-    dump(skater_model, "app/services/ml/skater_model.joblib")
     
-    dump(goalie_scaler, "app/services/ml/goalie_scaler.joblib")
-    dump(goalie_model, "app/services/ml/goalie_model.joblib")
+    # Remove existing joblib files
+    skater_scaler_path = "app/services/ml/skater_scaler.joblib"
+    skater_model_path = "app/services/ml/skater_model.joblib"
+    goalie_scaler_path = "app/services/ml/goalie_scaler.joblib"
+    goalie_model_path = "app/services/ml/goalie_model.joblib"
+    
+    if os.path.exists(skater_model_path):
+        os.remove(skater_model_path)
+    if os.path.exists(goalie_model_path):
+        os.remove(goalie_model_path)
+    
+    # Save the scalers and the models for future use
+    dump(skater_scaler, skater_scaler_path)
+    dump(skater_model, skater_model_path)
+    
+    dump(goalie_scaler, goalie_scaler_path)
+    dump(goalie_model, goalie_model_path)
 
-# Function to predict next season stats
-def predict_next_season(player_position, player_stats, player_age):
+# Use models to predict the player's next season stats based on their next season age
+def predict_next_season(player_position, player_age, player_stats):
     # Load the scaler and the models
     skater_scaler = load("app/services/ml/skater_scaler.joblib")
     skater_model = load("app/services/ml/skater_model.joblib")
@@ -96,7 +111,7 @@ def predict_next_season(player_position, player_stats, player_age):
     goalie_model = load("app/services/ml/goalie_model.joblib")
 
     # Prepare the input feature vector
-    input_data = player_stats + [player_age]
+    input_data = [player_age] + player_stats
     input_data_scaled = goalie_scaler.transform([input_data]) if player_position == "G" else skater_scaler.transform([input_data])
 
     # Select the appropriate model
@@ -128,7 +143,7 @@ def predict_next_season(player_position, player_stats, player_age):
         
         # Set negative values to zero for all stats except plusMinus, make sure savePctg doesn't exceed 100%
         if new_stat > 0 or (new_stat < 0 and player_position != "G" and current_index == skater_plusMinus_index):
-            if player_position == "G" and current_index == goalie_savePctg_index:
+            if new_stat > 1 and player_position == "G" and current_index == goalie_savePctg_index:
                 next_season_stats.append(1.0)
             else:
                 next_season_stats.append(new_stat)
@@ -147,9 +162,9 @@ if __name__ == "__main__":
         train_and_save_models()
     elif action == "predict":
         player_position = sys.argv[2]
-        player_stats = list(map(float, sys.argv[3:13])) if player_position == "G" else list(map(float, sys.argv[3:18]))
-        player_age = float(sys.argv[13]) if player_position == "G" else float(sys.argv[18])
-        predictions = predict_next_season(player_position, player_stats, player_age)
+        player_age = float(sys.argv[3])
+        player_stats = list(map(float, sys.argv[4:14])) if player_position == "G" else list(map(float, sys.argv[4:19]))
+        predictions = predict_next_season(player_position, player_age, player_stats)
         print(",".join(map(str, predictions)))
     else:
         print(f"Unknown action: {action}")

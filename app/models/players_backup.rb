@@ -1,0 +1,2 @@
+class PlayersBackup < ApplicationRecord
+end
