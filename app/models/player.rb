@@ -17,4 +17,6 @@ class Player < ApplicationRecord
     belongs_to :team, foreign_key: "teamID"
     has_many :skater_stats, foreign_key: "playerID", dependent: :destroy
     has_many :goalie_stats, foreign_key: "playerID", dependent: :destroy
+    has_many :skater_stats_predictions, foreign_key: "playerID", dependent: :destroy
+    has_many :goalie_stats_predictions, foreign_key: "playerID", dependent: :destroy
 end

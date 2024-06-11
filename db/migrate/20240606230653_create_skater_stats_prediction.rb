@@ -6,6 +6,7 @@ class CreateSkaterStatsPrediction < ActiveRecord::Migration[7.1]
             t.integer :goals, null: false
             t.integer :assists, null: false
             t.integer :points, null: false
+            t.decimal :avgToi, null: false
             t.decimal :faceoffWinningPctg, null: false
             t.integer :gameWinningGoals, null: false
             t.integer :otGoals, null: false

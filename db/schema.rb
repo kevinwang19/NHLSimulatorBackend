@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_04_001003) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_06_230750) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -127,6 +127,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_04_001003) do
     t.integer "goals", null: false
     t.integer "assists", null: false
     t.integer "points", null: false
+    t.decimal "avgToi", null: false
     t.decimal "faceoffWinningPctg", null: false
     t.integer "gameWinningGoals", null: false
     t.integer "otGoals", null: false
@@ -156,6 +157,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_04_001003) do
   add_foreign_key "goalie_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "goalie_stats_predictions", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "players", "teams", column: "teamID", primary_key: "teamID"
+  add_foreign_key "players_backups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "skater_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "skater_stats_predictions", "players", column: "playerID", primary_key: "playerID"
 end

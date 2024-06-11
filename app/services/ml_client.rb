@@ -9,6 +9,12 @@ class MlClient
             raise "Training failed: #{stderr}"
         end
     end
+    
+    # Convert "hh:mm" time to a decimal
+    def time_to_decimal(time_str)
+        minutes, seconds = time_str.split(':').map(&:to_i)
+        return minutes + (seconds / 60.0)
+    end
 
     # Save prediction stats data to database
     def save_prediction_stats_data()
@@ -17,7 +23,19 @@ class MlClient
             # Access the stats database and retrieve the most recent season stats for the specified player
             player_stats = player.positionCode == "G" ? GoalieStat.where(playerID: player.playerID) : SkaterStat.where(playerID: player.playerID)
             next if player_stats.empty?
-            last_stats = player_stats.max_by { |row| row["season"] }
+
+            # Sort player_stats by season in descending order
+            season_desc_stats = player_stats.sort_by { |row| -row["season"] }
+
+            # Find the first row with gamesPlayed >= 10 for non-goalies, otherwise take the first row
+            if player.positionCode == "G"
+                last_valid_stats = season_desc_stats.first
+            else
+                last_valid_stats = season_desc_stats.find { |row| row["gamesPlayed"] >= 10 }
+                
+                # If no valid row is found, return the row with the highest season
+                last_valid_stats ||= season_desc_stats.first
+            end
 
             # Stat columns to include
             include_columns = player.positionCode == "G" ?
@@ -26,20 +44,34 @@ class MlClient
                 :goalsAgainst, :goalsAgainstAvg, :savePctg, :shotsAgainst, :shutouts
             ] :
             [
-                :gamesPlayed, :goals, :assists, :points, :faceoffWinningPctg,
+                :gamesPlayed, :goals, :assists, :points, :avgToi, :faceoffWinningPctg,
                 :gameWinningGoals, :otGoals, :pim, :plusMinus, :powerPlayGoals,
                 :powerPlayPoints, :shootingPctg, :shorthandedGoals, :shorthandedPoints, :shots
             ]
 
-            stats = include_columns.map { |col| last_stats.send(col) }
+            stats = include_columns.map do |col| 
+                value = last_valid_stats.send(col)
+  
+                # Check if the value is a time string and convert it to decimal if so
+                if value.is_a?(String) && value.match?(/^\d{1,2}:\d{2}$/)
+                    time_to_decimal(value)
+                else
+                    value
+                end
+            end
             
             # Calculate player age at the beginning of each season
             birth_year = DateTime.parse(player.birthDate).year
-            season_year = last_stats["season"].to_s[0..3].to_i
+            season_year = season_desc_stats.first["season"].to_s[0..3].to_i
             age = season_year - birth_year
 
+            # Make stats invalid if it is from more than two seasons ago
+            current_year = Time.now.year
+            threshold_year = current_year - 2
+            next if season_year < threshold_year
+
             # Call the predict function in the Python script
-            script = "python3 app/services//ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")} "
+            script = "python3 app/services//ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")}"
             stdout, stderr, status = Open3.capture3(script)
 
             if status.success?
@@ -71,17 +103,18 @@ class MlClient
                         goals: prediction[1],
                         assists: prediction[2],
                         points: prediction[3],
-                        faceoffWinningPctg: prediction[4],
-                        gameWinningGoals: prediction[5],
-                        otGoals: prediction[6],
-                        pim: prediction[7],
-                        plusMinus: prediction[8],
-                        powerPlayGoals: prediction[9],
-                        powerPlayPoints: prediction[10],
-                        shootingPctg: prediction[11],
-                        shorthandedGoals: prediction[12],
-                        shorthandedPoints: prediction[13],
-                        shots: prediction[14]
+                        avgToi: prediction[4],
+                        faceoffWinningPctg: prediction[5],
+                        gameWinningGoals: prediction[6],
+                        otGoals: prediction[7],
+                        pim: prediction[8],
+                        plusMinus: prediction[9],
+                        powerPlayGoals: prediction[10],
+                        powerPlayPoints: prediction[11],
+                        shootingPctg: prediction[12],
+                        shorthandedGoals: prediction[13],
+                        shorthandedPoints: prediction[14],
+                        shots: prediction[15]
                     )
             
                     skater_prediction_stat.save

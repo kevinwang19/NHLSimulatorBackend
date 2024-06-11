@@ -56,12 +56,12 @@ class WebApiClient
     end
 
     # Get Player data from API
-    def get_player_data(teamAbbrev)
-        self.class.get("/roster/#{teamAbbrev}/current")
+    def get_player_data(team_abbrev)
+        self.class.get("/roster/#{team_abbrev}/current")
     end
   
     # Save Player data to database
-    def save_player_data(team)
+    def save_player_data(team, is_backup)
         position_groups = ["forwards", "defensemen", "goalies"]
 
         response = get_player_data(team.abbrev)
@@ -74,20 +74,37 @@ class WebApiClient
 
                 # Get player data from each position
                 position_group_data[position_group].each do |player_data|
-                    Player.create(
-                        playerID: player_data["id"],
-                        headshot: player_data["headshot"],
-                        firstName: player_data["firstName"]["default"],
-                        lastName: player_data["lastName"]["default"],
-                        sweaterNumber: player_data["sweaterNumber"],
-                        positionCode: player_data["positionCode"],
-                        shootsCatches: player_data["shootsCatches"],
-                        heightInInches: player_data["heightInInches"],
-                        weightInPounds: player_data["weightInPounds"],
-                        birthDate: player_data["birthDate"],
-                        birthCountry: player_data["birthCountry"],
-                        teamID: team.teamID
-                    )
+                    if is_backup
+                        PlayersBackup.create(
+                            playerID: player_data["id"],
+                            headshot: player_data["headshot"],
+                            firstName: player_data["firstName"]["default"],
+                            lastName: player_data["lastName"]["default"],
+                            sweaterNumber: player_data["sweaterNumber"],
+                            positionCode: player_data["positionCode"],
+                            shootsCatches: player_data["shootsCatches"],
+                            heightInInches: player_data["heightInInches"],
+                            weightInPounds: player_data["weightInPounds"],
+                            birthDate: player_data["birthDate"],
+                            birthCountry: player_data["birthCountry"],
+                            teamID: team.teamID
+                        )
+                    else
+                        Player.create(
+                            playerID: player_data["id"],
+                            headshot: player_data["headshot"],
+                            firstName: player_data["firstName"]["default"],
+                            lastName: player_data["lastName"]["default"],
+                            sweaterNumber: player_data["sweaterNumber"],
+                            positionCode: player_data["positionCode"],
+                            shootsCatches: player_data["shootsCatches"],
+                            heightInInches: player_data["heightInInches"],
+                            weightInPounds: player_data["weightInPounds"],
+                            birthDate: player_data["birthDate"],
+                            birthCountry: player_data["birthCountry"],
+                            teamID: team.teamID
+                        )
+                    end
                 end
             end
         else
