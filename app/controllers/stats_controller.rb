@@ -8,7 +8,7 @@ class StatsController < ApplicationController
     # GET /stats/:playerID
     def show
         @player = Player.find_by(playerID: params[:playerID])
-        @stats = @player.position == "G" ? GoalieStat.find_by(playerID: params[:playerID]) : SkaterStat.find_by(playerID: params[:playerID])
+        @stats = @player.position == "G" ? GoalieStat.where(playerID: params[:playerID]) : SkaterStat.where(playerID: params[:playerID])
         if @stats
             render json: @stats
         else

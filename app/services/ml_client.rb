@@ -27,11 +27,11 @@ class MlClient
             # Sort player_stats by season in descending order
             season_desc_stats = player_stats.sort_by { |row| -row["season"] }
 
-            # Find the first row with gamesPlayed >= 10 for non-goalies, otherwise take the first row
+            # Find the first row with gamesPlayed > 20 for non-goalies, otherwise take the first row
             if player.positionCode == "G"
                 last_valid_stats = season_desc_stats.first
             else
-                last_valid_stats = season_desc_stats.find { |row| row["gamesPlayed"] >= 10 }
+                last_valid_stats = season_desc_stats.find { |row| row["gamesPlayed"] > 20 }
                 
                 # If no valid row is found, return the row with the highest season
                 last_valid_stats ||= season_desc_stats.first

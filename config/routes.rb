@@ -11,4 +11,10 @@ Rails.application.routes.draw do
 
   # Routes for stats
   resources :stats, only: [:index, :show], param: :playerID, defaults: { format: :json }
+
+  # Routes for stats predictions
+  resources :stats_prediction, only: [:index, :show], param: :playerID, defaults: { format: :json }
+
+  # Routes for lineups
+  resources :lineups, only: [:index, :show], param: :teamID, defaults: { format: :json }
 end

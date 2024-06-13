@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_06_230750) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -43,6 +43,18 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_06_230750) do
     t.decimal "savePctg", null: false
     t.integer "shotsAgainst", null: false
     t.integer "shutouts", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "lineups", force: :cascade do |t|
+    t.integer "playerID", null: false
+    t.integer "teamID", null: false
+    t.string "position", null: false
+    t.integer "lineNumber"
+    t.integer "powerPlayLineNumber"
+    t.integer "penaltyKillLineNumber"
+    t.integer "otLineNumber"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
@@ -156,6 +168,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_06_230750) do
 
   add_foreign_key "goalie_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "goalie_stats_predictions", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "lineups", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "lineups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "players", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "players_backups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "skater_stats", "players", column: "playerID", primary_key: "playerID"

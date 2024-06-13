@@ -16,7 +16,9 @@ desc "Fetch and save initial data"
         fetch_teams(api_client, start_date)
         fetch_players(web_api_client)
         fetch_stats(web_api_client, start_date, end_date)
-        fetch_ratings(web_api_client)
+
+        generate_ratings()
+        generate_lineups()
     end
 
     # Fetch schedule
@@ -73,9 +75,8 @@ desc "Fetch and save initial data"
             # Populate Players database with the roster from all active teams
             teams.each do |team|
                 web_api_client.save_player_data(team, false)
-                puts "Fetching #{team.abbrev}"
             end
-            puts "Fetched and saved stats for all players"
+            puts "Fetched and saved players for all rosters"
         else
             puts "All rosters already loaded"
             sleep(1)
@@ -120,8 +121,8 @@ desc "Fetch and save initial data"
         end
     end
 
-    # Fetch offensive and defensive player ratings
-    def fetch_ratings(web_api_client)
+    # Generate offensive and defensive player ratings
+    def generate_ratings()
         puts "Preparing ratings for all players..."
 
         ratings_generator = RatingsGenerator.new
@@ -134,5 +135,28 @@ desc "Fetch and save initial data"
             ratings_generator.save_ratings_data(team_players)
         end
         puts "Generated and saved ratings for all players"
+        sleep(1)
+    end
+
+    # Generate team lineups
+    def generate_lineups()
+        puts "Preparing lineups for all teams..."
+
+        lineups_generator = LineupsGenerator.new
+
+        # Group players by team
+        players_by_team = Player.all.group_by(&:teamID)
+
+        # If the rosters have changed, then we fetch the players again
+        if !players_tables_are_same()
+            # Iterate through each team and its associated players
+            players_by_team.each do |team_id, team_players|
+                lineups_generator.save_lineups_data(team_id, team_players)
+            end
+            puts "Generated and saved lineups for all teams"
+        else
+            puts "All lineups already loaded"
+            sleep(1)
+        end
     end
 end
