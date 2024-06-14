@@ -11,7 +11,6 @@ class Player < ApplicationRecord
     validates :weightInPounds, presence: true
     validates :birthDate, presence: true
     validates :birthCountry, presence: true
-    validates :teamID, presence: true
 
     # Associations
     belongs_to :team, foreign_key: "teamID"

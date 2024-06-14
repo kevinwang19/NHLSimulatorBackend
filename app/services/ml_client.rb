@@ -17,9 +17,12 @@ class MlClient
     end
 
     # Save prediction stats data to database
-    def save_prediction_stats_data()
+    def save_prediction_stats_data(different_stats_player)
         # Iterate through all players in the database
         Player.all.each do |player|
+            # If the players stats have not changed, keep the existing predictions
+            next unless different_stats_player.include?(player.playerID)
+
             # Access the stats database and retrieve the most recent season stats for the specified player
             player_stats = player.positionCode == "G" ? GoalieStat.where(playerID: player.playerID) : SkaterStat.where(playerID: player.playerID)
             next if player_stats.empty?
@@ -78,10 +81,28 @@ class MlClient
                 # Get the prediction stats as an array
                 prediction = stdout.strip.split(',').map(&:to_f)
                 next if prediction.empty?
-                    
+
                 # Add goalie prediction stats to the GoalieStatPrediction table and skater prediction stats to the SkaterStatPrediction table
                 if player.positionCode == "G"
-                    goalie_prediction_stat = GoalieStatsPrediction.find_or_initialize_by(
+                    # Find if the goalie prediction stats already exists in the database
+                    existing_goalie_prediction = GoalieStatsPrediction.find_by(playerID: player.playerID)
+                    
+                    # Update prediction stats if the record exists, otherwise add a new prediction record to the database
+                    if existing_goalie_prediction
+                        existing_goalie_prediction.update(
+                            gamesPlayed: prediction[0],
+                            gamesStarted: prediction[1],
+                            wins: prediction[2],
+                            losses: prediction[3],
+                            otLosses: prediction[4],
+                            goalsAgainst: prediction[5],
+                            goalsAgainstAvg: prediction[6],
+                            savePctg: prediction[7],
+                            shotsAgainst: prediction[8],
+                            shutouts: prediction[9]
+                        )
+                    else
+                        GoalieStatsPrediction.create(
                         playerID: player.playerID,
                         gamesPlayed: prediction[0],
                         gamesStarted: prediction[1],
@@ -94,30 +115,52 @@ class MlClient
                         shotsAgainst: prediction[8],
                         shutouts: prediction[9]
                     )
-
-                    goalie_prediction_stat.save
+                    end
                 else
-                    skater_prediction_stat = SkaterStatsPrediction.find_or_initialize_by(
-                        playerID: player.playerID,
-                        gamesPlayed: prediction[0],
-                        goals: prediction[1],
-                        assists: prediction[2],
-                        points: prediction[3],
-                        avgToi: prediction[4],
-                        faceoffWinningPctg: prediction[5],
-                        gameWinningGoals: prediction[6],
-                        otGoals: prediction[7],
-                        pim: prediction[8],
-                        plusMinus: prediction[9],
-                        powerPlayGoals: prediction[10],
-                        powerPlayPoints: prediction[11],
-                        shootingPctg: prediction[12],
-                        shorthandedGoals: prediction[13],
-                        shorthandedPoints: prediction[14],
-                        shots: prediction[15]
-                    )
-            
-                    skater_prediction_stat.save
+                    # Find if the skater prediction stats already exists in the database
+                    existing_skater_prediction = SkaterStatsPrediction.find_by(playerID: player.playerID)
+                    
+                    # Update prediction stats if the record exists, otherwise add a new prediction record to the database
+                    if existing_skater_prediction
+                        existing_skater_prediction.update(
+                            gamesPlayed: prediction[0],
+                            goals: prediction[1],
+                            assists: prediction[2],
+                            points: prediction[3],
+                            avgToi: prediction[4],
+                            faceoffWinningPctg: prediction[5],
+                            gameWinningGoals: prediction[6],
+                            otGoals: prediction[7],
+                            pim: prediction[8],
+                            plusMinus: prediction[9],
+                            powerPlayGoals: prediction[10],
+                            powerPlayPoints: prediction[11],
+                            shootingPctg: prediction[12],
+                            shorthandedGoals: prediction[13],
+                            shorthandedPoints: prediction[14],
+                            shots: prediction[15]
+                        )
+                    else
+                        SkaterStatsPrediction.create(
+                            playerID: player.playerID,
+                            gamesPlayed: prediction[0],
+                            goals: prediction[1],
+                            assists: prediction[2],
+                            points: prediction[3],
+                            avgToi: prediction[4],
+                            faceoffWinningPctg: prediction[5],
+                            gameWinningGoals: prediction[6],
+                            otGoals: prediction[7],
+                            pim: prediction[8],
+                            plusMinus: prediction[9],
+                            powerPlayGoals: prediction[10],
+                            powerPlayPoints: prediction[11],
+                            shootingPctg: prediction[12],
+                            shorthandedGoals: prediction[13],
+                            shorthandedPoints: prediction[14],
+                            shots: prediction[15]
+                        )
+                    end
                 end
             else
                 puts "Error: #{stderr}"

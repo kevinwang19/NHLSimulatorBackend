@@ -1,4 +1,4 @@
-id,playerID,season,gamesPlayed,gamesStarted,wins,losses,otLosses,goalsAgainst,goalsAgainstAvg,savePctg,shotsAgainst,shutouts,created_at,updated_at
+goalieStatID,playerID,season,gamesPlayed,gamesStarted,wins,losses,otLosses,goalsAgainst,goalsAgainstAvg,savePctg,shotsAgainst,shutouts,created_at,updated_at
 1,8480843,20212022,4,3,1,2,0,10,2.978407,0.907407,108,0,2024-06-12 23:03:12 UTC,2024-06-12 23:03:12 UTC
 2,8480843,20222023,19,17,4,10,3,67,3.782758,0.901325,679,0,2024-06-12 23:03:12 UTC,2024-06-12 23:03:12 UTC
 3,8480843,20232024,44,38,14,23,3,129,3.332161,0.901527,1310,1,2024-06-12 23:03:12 UTC,2024-06-12 23:03:12 UTC

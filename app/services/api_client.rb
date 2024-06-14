@@ -14,7 +14,7 @@ class ApiClient
 
         active_teams = []
         
-        # Get team data from Schedule table
+        # Get team data from first 2 weeks of Schedule table
         Schedule.where(date: start_date..end_date).each do |schedule|
             [schedule.awayTeamID, schedule.homeTeamID].each do |team_id|
                 active_teams << team_id unless active_teams.include?(team_id)
@@ -42,9 +42,8 @@ class ApiClient
             if response.success?
                 # Get additional team data from Teams API
                 team_data = response.parsed_response["data"].find { |team| team["id"] == team_id }
-                full_name = nil
 
-                if team_data.present?
+                if team_data
                     full_name = team_data["fullName"]
                         
                     Team.create(

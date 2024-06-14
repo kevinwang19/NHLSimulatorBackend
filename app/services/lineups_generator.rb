@@ -1,6 +1,10 @@
 class LineupsGenerator
     # Save team lineups data to database
     def save_lineups_data(team_id, players)
+        # Get current team players from the lineups database
+        current_team_players_ids = Lineup.where(teamID: team_id).pluck(:playerID)
+        updated_team_players_ids = []
+        
         # Sort forwards by offensive and defensive ratings
         forwards = players.select { |player| ["C", "L", "R"].include?(player.positionCode) }
         offensive_forwards_order = forwards.sort_by { |forward| -forward["offensiveRating"] }
@@ -55,15 +59,27 @@ class LineupsGenerator
         }
 
         # Add each line to lineups database
-        save_line(team_id, 1, lineup1, special_lineups)
-        save_line(team_id, 2, lineup2, special_lineups)
-        save_line(team_id, 3, lineup3, special_lineups)
-        save_line(team_id, 4, lineup4, special_lineups)
-        save_line(team_id, nil, extra, special_lineups)
+        save_line(team_id, 1, lineup1, special_lineups, updated_team_players_ids)
+        save_line(team_id, 2, lineup2, special_lineups, updated_team_players_ids)
+        save_line(team_id, 3, lineup3, special_lineups, updated_team_players_ids)
+        save_line(team_id, 4, lineup4, special_lineups, updated_team_players_ids)
+        save_line(team_id, nil, extra, special_lineups, updated_team_players_ids)
+
+        # Set current team players' teamID and lines to nil if they are no longer on the team using playerID
+        different_team_players_ids = current_team_players_ids - updated_team_players_ids
+        unless different_team_players_ids.empty?
+            Player.where(playerID: different_team_players_ids).update_all(
+                teamID: nil, 
+                lineNumber: nil, 
+                powerPlayLineNumber: nil, 
+                penaltyKillLineNumber: nil, 
+                otLineNumber: nil
+            )
+        end
     end
 
     # Save specific team line to database
-    def save_line(team_id, line_number, line, special_lines)
+    def save_line(team_id, line_number, line, special_lines, updated_team_players_ids)
         # Line position counter to prevent players from being added to the same position
         position_counters = {
             "LW" => 0,
@@ -75,22 +91,39 @@ class LineupsGenerator
 
         # Add each player lineup stat from the line to the Lineup table
         line.each do |player|
+            # Add new lineup data to the updated team players list
+            updated_team_players_ids << player.playerID
+
+            # Get player position and check if player is on any special lines
             position = position(player.positionCode, player.shootsCatches, position_counters)
             powerPlayLineNumber = special_lines[:pp1].include?(player) ? 1 : (special_lines[:pp2].include?(player) ? 2 : nil)
             penaltyKillLineNumber = special_lines[:pk1].include?(player) ? 1 : (special_lines[:pk2].include?(player) ? 2 : nil)
             otLineNumber = special_lines[:ot1].include?(player) ? 1 : (special_lines[:ot2].include?(player) ? 2 : nil)
             
-            player_line = Lineup.find_or_initialize_by(
-                playerID: player.playerID,
-                teamID: team_id,
-                position: position,
-                lineNumber: line_number,
-                powerPlayLineNumber: powerPlayLineNumber,
-                penaltyKillLineNumber: penaltyKillLineNumber,
-                otLineNumber: otLineNumber
-            )
+            # Find if the player already exists in the database
+            existing_player = Lineup.find_by(playerID: player.playerID)
 
-            player_line.save
+            # Update required attributes if the player exists, otherwise add the player to the database
+            if existing_player
+                existing_player.update(
+                    teamID: team_id,
+                    position: position,
+                    lineNumber: line_number,
+                    powerPlayLineNumber: powerPlayLineNumber,
+                    penaltyKillLineNumber: penaltyKillLineNumber,
+                    otLineNumber: otLineNumber
+                )
+            else
+                Lineup.create(
+                    playerID: player.playerID,
+                    teamID: team_id,
+                    position: position,
+                    lineNumber: line_number,
+                    powerPlayLineNumber: powerPlayLineNumber,
+                    penaltyKillLineNumber: penaltyKillLineNumber,
+                    otLineNumber: otLineNumber
+                )
+            end
         end
     end
 

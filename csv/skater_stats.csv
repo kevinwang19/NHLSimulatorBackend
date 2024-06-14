@@ -1,4 +1,4 @@
-id,playerID,season,gamesPlayed,goals,assists,points,avgToi,faceoffWinningPctg,gameWinningGoals,otGoals,pim,plusMinus,powerPlayGoals,powerPlayPoints,shootingPctg,shorthandedGoals,shorthandedPoints,shots,created_at,updated_at
+skaterStatID,playerID,season,gamesPlayed,goals,assists,points,avgToi,faceoffWinningPctg,gameWinningGoals,otGoals,pim,plusMinus,powerPlayGoals,powerPlayPoints,shootingPctg,shorthandedGoals,shorthandedPoints,shots,created_at,updated_at
 1,8484153,20232024,55,12,17,29,18:06,0.347594,0,0,16,-11,4,9,0.110092,0,0,109,2024-06-12 23:03:04 UTC,2024-06-12 23:03:04 UTC
 2,8482118,20232024,3,1,0,1,12:33,0.0,0,0,2,0,0,0,0.142857,0,0,7,2024-06-12 23:03:05 UTC,2024-06-12 23:03:05 UTC
 3,8483445,20232024,1,0,1,1,15:24,0.0,0,0,0,1,0,0,0.0,0,0,3,2024-06-12 23:03:05 UTC,2024-06-12 23:03:05 UTC

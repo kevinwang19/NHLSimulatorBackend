@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_14_034207) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
-  create_table "goalie_stats", force: :cascade do |t|
+  create_table "goalie_stats", primary_key: "goalieStatID", id: :bigint, default: -> { "nextval('goalie_stats_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
     t.integer "season", null: false
     t.integer "gamesPlayed", null: false
@@ -31,7 +31,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "goalie_stats_predictions", force: :cascade do |t|
+  create_table "goalie_stats_predictions", primary_key: "goaliePredictedStatID", id: :bigint, default: -> { "nextval('goalie_stats_predictions_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
     t.integer "gamesPlayed", null: false
     t.integer "gamesStarted", null: false
@@ -47,9 +47,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "lineups", force: :cascade do |t|
+  create_table "lineups", primary_key: "lineupID", id: :bigint, default: -> { "nextval('lineups_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
-    t.integer "teamID", null: false
+    t.integer "teamID"
     t.string "position", null: false
     t.integer "lineNumber"
     t.integer "powerPlayLineNumber"
@@ -71,7 +71,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.integer "weightInPounds", null: false
     t.string "birthDate", null: false
     t.string "birthCountry", null: false
-    t.integer "teamID", null: false
+    t.integer "teamID"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "offensiveRating"
@@ -79,22 +79,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.index ["playerID"], name: "index_players_on_playerID", unique: true
   end
 
-  create_table "players_backups", id: false, force: :cascade do |t|
-    t.integer "playerID", null: false
-    t.string "headshot"
-    t.string "firstName", null: false
-    t.string "lastName", null: false
-    t.integer "sweaterNumber"
-    t.string "positionCode", null: false
-    t.string "shootsCatches", null: false
-    t.integer "heightInInches", null: false
-    t.integer "weightInPounds", null: false
-    t.string "birthDate", null: false
-    t.string "birthCountry", null: false
-    t.integer "teamID", null: false
-  end
-
-  create_table "schedules", force: :cascade do |t|
+  create_table "schedules", primary_key: "scheduleID", id: :bigint, default: -> { "nextval('schedules_id_seq'::regclass)" }, force: :cascade do |t|
     t.string "date", null: false
     t.string "dayAbbrev", null: false
     t.integer "season", null: false
@@ -104,13 +89,12 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.integer "homeTeamID", null: false
     t.string "homeTeamAbbrev", null: false
     t.string "homeTeamLogo", null: false
-    t.string "score"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["date", "awayTeamID", "homeTeamID"], name: "index_games_on_all_values_unique", unique: true
   end
 
-  create_table "skater_stats", force: :cascade do |t|
+  create_table "skater_stats", primary_key: "skaterStatID", id: :bigint, default: -> { "nextval('skater_stats_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
     t.integer "season", null: false
     t.integer "gamesPlayed", null: false
@@ -133,7 +117,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "skater_stats_predictions", force: :cascade do |t|
+  create_table "skater_stats_predictions", primary_key: "skaterPredictedStatID", id: :bigint, default: -> { "nextval('skater_stats_predictions_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
     t.integer "gamesPlayed", null: false
     t.integer "goals", null: false
@@ -159,7 +143,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
     t.integer "teamID", null: false
     t.string "fullName", null: false
     t.string "abbrev", null: false
-    t.string "logo", null: false
+    t.string "logo"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "isActive", default: true
@@ -171,7 +155,6 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_11_220730) do
   add_foreign_key "lineups", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "lineups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "players", "teams", column: "teamID", primary_key: "teamID"
-  add_foreign_key "players_backups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "skater_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "skater_stats_predictions", "players", column: "playerID", primary_key: "playerID"
 end

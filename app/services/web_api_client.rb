@@ -61,8 +61,12 @@ class WebApiClient
     end
   
     # Save Player data to database
-    def save_player_data(team, is_backup)
+    def save_player_data(team)
         position_groups = ["forwards", "defensemen", "goalies"]
+        
+        # Get current team player IDs from the players database
+        current_team_players_ids = Player.where(teamID: team.teamID).pluck(:playerID)
+        updated_team_players_ids = []
 
         response = get_player_data(team.abbrev)
         
@@ -74,21 +78,26 @@ class WebApiClient
 
                 # Get player data from each position
                 position_group_data[position_group].each do |player_data|
-                    if is_backup
-                        PlayersBackup.create(
-                            playerID: player_data["id"],
-                            headshot: player_data["headshot"],
-                            firstName: player_data["firstName"]["default"],
-                            lastName: player_data["lastName"]["default"],
-                            sweaterNumber: player_data["sweaterNumber"],
-                            positionCode: player_data["positionCode"],
-                            shootsCatches: player_data["shootsCatches"],
-                            heightInInches: player_data["heightInInches"],
-                            weightInPounds: player_data["weightInPounds"],
-                            birthDate: player_data["birthDate"],
-                            birthCountry: player_data["birthCountry"],
-                            teamID: team.teamID
-                        )
+                    # Add new player data to the updated team players list
+                    updated_team_players_ids << player_data["id"]
+
+                    # Find if the player already exists in the database
+                    existing_player = Player.find_by(playerID: player_data["id"])
+
+                    # Update required attributes if the player exists, otherwise add the player to the database
+                    if existing_player
+                        # If the player exists on a different team, change his teamID to the current team
+                        if existing_player.teamID != team.teamID
+                            existing_player.update(teamID: team.teamID)
+                        end
+
+                        # Update personalized player attributes if they have changed
+                        attribute_checks = ["headshot", "sweaterNumber", "positionCode"]
+                        attribute_checks.each do |attribute|
+                            if existing_player[attribute] != player_data[attribute]
+                                existing_player.update(attribute => player_data[attribute])
+                            end
+                        end
                     else
                         Player.create(
                             playerID: player_data["id"],
@@ -109,6 +118,12 @@ class WebApiClient
             end
         else
             Rails.logger.error "Failed to retrieve roster for #{team.abbrev}: #{response.message}"
+        end
+
+        # Set current team players' teamID to nil if they are no longer on the team using playerID
+        different_team_players_ids = current_team_players_ids - updated_team_players_ids
+        unless different_team_players_ids.empty?
+            Player.where(playerID: different_team_players_ids).update_all(teamID: nil)
         end
     end
 

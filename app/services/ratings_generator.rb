@@ -1,6 +1,6 @@
 class RatingsGenerator
     # Save offensive and defensive ratings data to database
-    def save_ratings_data(players)
+    def save_ratings_data(players, different_stats_player)
         # Weights of each stat for generating an accurate rating
         offensive_weights = {
             goals: 0.4,
@@ -54,6 +54,9 @@ class RatingsGenerator
         
         # Get ratings for each player
         players.each do |player|
+            # If the players stats and prediction stats have not changed, keep the existing ratings
+            next unless different_stats_player.include?(player.playerID)
+
             if player.positionCode == "G"
                 goalie_rating = 0
 
@@ -62,7 +65,6 @@ class RatingsGenerator
                 
                 # Calculate rating based on the stats and weight if player's stats exist
                 if player_stats
-
                     goalie_rating += ((player_stats.wins.to_f / player_stats.gamesPlayed) * goaltending_weights[:wins])
                     goalie_rating -= ((player_stats.losses.to_f / player_stats.gamesPlayed) * goaltending_weights[:losses])
                     goalie_rating += ((player_stats.otLosses.to_f / player_stats.gamesPlayed) * goaltending_weights[:ot_losses])
