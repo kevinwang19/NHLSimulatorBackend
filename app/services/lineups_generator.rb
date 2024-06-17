@@ -68,7 +68,7 @@ class LineupsGenerator
         # Set current team players' teamID and lines to nil if they are no longer on the team using playerID
         different_team_players_ids = current_team_players_ids - updated_team_players_ids
         unless different_team_players_ids.empty?
-            Player.where(playerID: different_team_players_ids).update_all(
+            Lineup.where(playerID: different_team_players_ids).update_all(
                 teamID: nil, 
                 lineNumber: nil, 
                 powerPlayLineNumber: nil, 

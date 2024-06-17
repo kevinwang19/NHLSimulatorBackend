@@ -1,9 +1,7 @@
-import math
 import os
 import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from joblib import dump, load
@@ -46,12 +44,21 @@ def load_and_prepare_data():
     merged_goalie_df["seasonStart"] = merged_goalie_df["season"].astype(str).str[:4].astype(int)
     merged_goalie_df["age"] = merged_goalie_df["seasonStart"] - merged_goalie_df["birthDate"].dt.year.astype(int)
 
-    # Calculate year-over-year changes in stats
+    # Calculate year-over-year changes in stats as well as stats from the season prior as a reference point/baseline
     for col in skater_stat_columns:
         merged_skater_df[f"{col}_change"] = merged_skater_df.groupby("playerID")[col].diff()
+        merged_skater_df[f"{col}_last_season"] = merged_skater_df.groupby("playerID")[col].shift(1)
 
     for col in goalie_stat_columns:
         merged_goalie_df[f"{col}_change"] = merged_goalie_df.groupby("playerID")[col].diff()
+        merged_goalie_df[f"{col}_last_season"] = merged_goalie_df.groupby("playerID")[col].shift(1)
+
+    # Fill NaN values with 0 for last season stats
+    for col in skater_stat_columns:
+        merged_skater_df[f"{col}_last_season"].fillna(0, inplace=True)
+    
+    for col in goalie_stat_columns:
+        merged_goalie_df[f"{col}_last_season"].fillna(0, inplace=True)
 
     # Remove rows with NaN changes (first season for each player)
     merged_skater_df = merged_skater_df.dropna(subset=[f"{col}_change" for col in skater_stat_columns])
@@ -64,13 +71,13 @@ def train_and_save_models():
     merged_skater_df, merged_goalie_df, skater_stat_columns, goalie_stat_columns = load_and_prepare_data()
 
     # Prepare Features and Target
-    skater_features = ["age"] + skater_stat_columns
+    skater_features = ["age"] + skater_stat_columns + [f"{col}_last_season" for col in skater_stat_columns]
     skater_target = [f"{col}_change" for col in skater_stat_columns]
 
     skater_predictor = merged_skater_df[skater_features]
     skater_response = merged_skater_df[skater_target]
 
-    goalie_features = ["age"] + goalie_stat_columns
+    goalie_features = ["age"] + goalie_stat_columns + [f"{col}_last_season" for col in goalie_stat_columns]
     goalie_target = [f"{col}_change" for col in goalie_stat_columns]
 
     goalie_predictor = merged_goalie_df[goalie_features]
@@ -88,10 +95,10 @@ def train_and_save_models():
     goalie_predictor_train, goalie_predictor_test, goalie_response_train, goalie_response_test = train_test_split(goalie_predictor_scaled, goalie_response, test_size=0.2)
 
     # Model training using Linear Regression
-    skater_model = LinearRegression() 
+    skater_model = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42) 
     skater_model.fit(skater_predictor_train, skater_response_train)
 
-    goalie_model = LinearRegression() #RandomForestRegressor(n_estimators=100)
+    goalie_model = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42) 
     goalie_model.fit(goalie_predictor_train, goalie_response_train)
     
     # Remove existing joblib files
@@ -112,15 +119,15 @@ def train_and_save_models():
     dump(goalie_model, goalie_model_path)
 
 # Use models to predict the player's next season stats based on their next season age
-def predict_next_season(player_position, player_age, player_stats):
+def predict_next_season(player_position, player_age, player_stats, prev_season_player_stats):
     # Load the scaler and the models
     skater_scaler = load("app/services/ml/skater_scaler.joblib")
     skater_model = load("app/services/ml/skater_model.joblib")
     goalie_scaler = load("app/services/ml/goalie_scaler.joblib")
     goalie_model = load("app/services/ml/goalie_model.joblib")
 
-    # Prepare the input feature vector
-    input_data = [player_age] + player_stats
+    # Prepare the input feature vector, if the player has no previous stats, use the current stats as the previous stats
+    input_data = [player_age] + player_stats + (player_stats if not prev_season_player_stats else prev_season_player_stats)
     input_data_scaled = goalie_scaler.transform([input_data]) if player_position == "G" else skater_scaler.transform([input_data])
 
     # Select the appropriate model
@@ -161,15 +168,11 @@ def predict_next_season(player_position, player_age, player_stats):
         if player_position == "G":
             # Goalie games played critera
             if current_index == gamesPlayed_index:
-                # Use lasts season games played stats if new stat is less than 10 games
-                games_played = current_stat if new_stat < 10 else new_stat
                 # Only consider goalies with at least 3 games played
-                if games_played < 3:
+                if new_stat < 3:
                     return []
                 # Cap games played at 82
-                games_played = 82 if games_played > 82 else games_played
-                # Stats scaled down 10% if greater than 70% of a full season
-                games_played = math.floor(games_played * 0.9 if games_played > 82 * 0.7 else games_played)
+                games_played = 82 if new_stat > 82 else new_stat
                 next_season_stats.append(games_played)
             # Goalie games started critera
             elif current_index == goalie_gamesStarted_index:
@@ -178,10 +181,8 @@ def predict_next_season(player_position, player_age, player_stats):
                 next_season_stats.append(games_started)
             # Goalie wins criteria
             elif current_index == goalie_wins_index:
-                # Use lasts season wins stats if new stat is less than 5 wins to remove unaccurately bad goalie records
-                wins = current_stat if new_stat < 5 else new_stat
-                # Stats scaled down 10% if greater than 60% of games played
-                wins = math.floor(new_stat * 0.9 if wins > games_played * 0.6 else wins)
+                # Losess stats can't be less than 0
+                wins = 0 if new_stat < 0 else new_stat
                 # Must be less than games played
                 wins = games_played if wins > games_played else wins
                 next_season_stats.append(wins)
@@ -222,23 +223,11 @@ def predict_next_season(player_position, player_age, player_stats):
             elif current_index == skater_goals_index:
                 # Goals stats can't be less than 0
                 goals = 0 if new_stat < 0 else new_stat
-                # Stats scaled down 10% if greater than 60% of games played
-                goals = math.floor(goals * 0.9 if goals > games_played * 0.6 else goals)
-                # Stats scaled down 10% if goals are still greater than 70% of games played to remove unaccurately high stats
-                goals = math.floor(goals * 0.9 if goals > games_played * 0.7 else goals)
-                # Cap goals at the number of games played
-                goals = games_played if goals > games_played else goals
                 next_season_stats.append(goals)
             # Skater assists criteria
             elif current_index == skater_assists_index:
                 # Assists stats can't be less than 0
                 assists = 0 if new_stat < 0 else new_stat
-                # Stats scaled down 10% if greater than 85% of games played
-                assists = math.floor(assists * 0.9 if assists > games_played * 0.85 else assists)
-                # Stats scaled down 10% if assists are still greater than 95% of games played to remove unaccurately high stats
-                assists = math.floor(assists * 0.9 if assists > games_played * 0.95 else assists)
-                # Cap assists at 150% the number of games played
-                assists = math.floor(games_played * 1.5 if assists > games_played * 1.5 else assists)
                 next_season_stats.append(assists)
             # Skater points criteria
             elif current_index == skater_points_index:
@@ -247,15 +236,8 @@ def predict_next_season(player_position, player_age, player_stats):
                 next_season_stats.append(points)
             # Skater plus minus criteria
             elif current_index == skater_plusMinus_index:
-                # Plus minus stats scaled down 20% if greater (positive or negative) than 50% of games played
-                plus_minus = math.floor(new_stat * 0.8 if (new_stat > games_played * 0.5 or new_stat < games_played * -0.5) else new_stat)
-                # Stats scaled down 20% if still greater (positive or negative) than 60% of games played
-                plus_minus = math.floor(plus_minus * 0.8 if (plus_minus > games_played * 0.6 or plus_minus < games_played * -0.6) else plus_minus)
-                # Stats scaled down 20% if still greater (positive or negative) than 70% of games played to remove unaccurately high stats
-                plus_minus = math.floor(plus_minus * 0.8 if (plus_minus > games_played * 0.7 or plus_minus < games_played * -0.7) else plus_minus)
-                # Cap plus minus at 80% (positive or negative) the number of games played
-                plus_minus = math.floor(games_played * 0.8 if (plus_minus > games_played * 0.8 or plus_minus < games_played * -0.8) else plus_minus)
-                next_season_stats.append(plus_minus)
+                # Allow plus minus to be negative
+                next_season_stats.append(new_stat)
             # Other skater stats criteria
             else:
                 # Stat can't be less than 0
@@ -276,7 +258,13 @@ if __name__ == "__main__":
         player_position = sys.argv[2]
         player_age = float(sys.argv[3])
         player_stats = list(map(float, sys.argv[4:14])) if player_position == "G" else list(map(float, sys.argv[4:20]))
-        predictions = predict_next_season(player_position, player_age, player_stats)
+
+        if (player_position == "G" and len(sys.argv) > 14) or (player_position != "G" and len(sys.argv) > 20):
+            prev_season_player_stats = list(map(float, sys.argv[14:24])) if player_position == "G" else list(map(float, sys.argv[20:36]))
+        else:
+            prev_season_player_stats = []
+        
+        predictions = predict_next_season(player_position, player_age, player_stats, prev_season_player_stats)
         print(",".join(map(str, predictions)))
     else:
         print(f"Unknown action: {action}")

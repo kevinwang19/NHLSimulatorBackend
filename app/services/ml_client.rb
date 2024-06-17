@@ -10,14 +10,63 @@ class MlClient
         end
     end
     
-    # Convert "hh:mm" time to a decimal
+    # Convert "mm:ss" time to a decimal
     def time_to_decimal(time_str)
+        return 0.0 unless time_str.is_a?(String) && time_str.match?(/^\d{1,2}:\d{2}$/)
         minutes, seconds = time_str.split(':').map(&:to_i)
         return minutes + (seconds / 60.0)
     end
 
+    # Store column results to an array
+    def stats_to_array(columns, stats)
+        stats_array = columns.map do |col| 
+            value = stats.send(col)
+
+            # Check if the value is a time string and convert it to decimal if so
+            if value.is_a?(String) && value.match?(/^\d{1,2}:\d{2}$/)
+                time_to_decimal(value)
+            else
+                value
+            end
+        end
+
+        return stats_array
+    end
+
+    # Combine stats for the same season
+    def combine_stats(season_desc_stats)
+        combined_stats = []
+        averaging_stats = ["faceoffWinningPctg", "shootingPctg", "goalsAgainstAvg", "savePctg"]
+  
+        season_desc_stats.each do |row|
+            # Find matching season rows
+            existing_entry = combined_stats.find { |entry| entry.season == row.season }
+  
+            if existing_entry
+                row.attributes.each do |key, value|
+                    next if key == "season"
+          
+                    # Calculate average of avgToi
+                    if key == "avgToi"
+                        existing_entry["avgToi"] = (time_to_decimal(existing_entry[key]) + time_to_decimal(value)) / 2.0
+                    # Calculate average for averaging stats
+                    elsif averaging_stats.include?(key)
+                        existing_entry[key] = ((existing_entry[key] || 0) + (value || 0)) / 2.0
+                    elsif value.is_a?(Numeric)
+                        # Sum numeric values
+                        existing_entry[key] = (existing_entry[key] || 0) + (value || 0)
+                    end
+                end
+            else
+                combined_stats << row.dup
+            end
+        end
+  
+        return combined_stats
+    end
+
     # Save prediction stats data to database
-    def save_prediction_stats_data(different_stats_player)
+    def save_prediction_stats_data(different_stats_player, recent_season)
         # Iterate through all players in the database
         Player.all.each do |player|
             # If the players stats have not changed, keep the existing predictions
@@ -28,17 +77,23 @@ class MlClient
             next if player_stats.empty?
 
             # Sort player_stats by season in descending order
-            season_desc_stats = player_stats.sort_by { |row| -row["season"] }
+            season_desc_stats = player_stats.sort_by { |row| -row.season }
 
-            # Find the first row with gamesPlayed > 20 for non-goalies, otherwise take the first row
+            # Combine stats for the same season
+            combined_stats = combine_stats(season_desc_stats)
+
+            # Find the first row with gamesPlayed > 10 for non-goalies, otherwise take the first row
             if player.positionCode == "G"
-                last_valid_stats = season_desc_stats.first
+                last_valid_stats = combined_stats.first
             else
-                last_valid_stats = season_desc_stats.find { |row| row["gamesPlayed"] > 20 }
+                last_valid_stats = combined_stats.find { |row| row.gamesPlayed > 10 }
                 
                 # If no valid row is found, return the row with the highest season
-                last_valid_stats ||= season_desc_stats.first
+                last_valid_stats ||= combined_stats.first
             end
+
+            # Get the second most recent season stats
+            second_last_valid_stats = combined_stats.find { |row| row.season == last_valid_stats.season - 1 }
 
             # Stat columns to include
             include_columns = player.positionCode == "G" ?
@@ -52,29 +107,30 @@ class MlClient
                 :powerPlayPoints, :shootingPctg, :shorthandedGoals, :shorthandedPoints, :shots
             ]
 
-            stats = include_columns.map do |col| 
-                value = last_valid_stats.send(col)
-  
-                # Check if the value is a time string and convert it to decimal if so
-                if value.is_a?(String) && value.match?(/^\d{1,2}:\d{2}$/)
-                    time_to_decimal(value)
-                else
-                    value
-                end
+            # Array of most recent stats
+            stats = stats_to_array(include_columns, last_valid_stats)
+            
+            # Array of second-most recent stats
+            prev_stats = nil
+            if second_last_valid_stats
+                prev_stats = stats_to_array(include_columns, second_last_valid_stats)
             end
             
             # Calculate player age at the beginning of each season
             birth_year = DateTime.parse(player.birthDate).year
-            season_year = season_desc_stats.first["season"].to_s[0..3].to_i
+            season_year = combined_stats.first.season.to_s[0..3].to_i
             age = season_year - birth_year
 
-            # Make stats invalid if it is from more than two seasons ago
-            current_year = Time.now.year
-            threshold_year = current_year - 2
-            next if season_year < threshold_year
+            # Make stats invalid if there are no stats from the most recent season
+            next if combined_stats.first.season < recent_season
 
             # Call the predict function in the Python script
-            script = "python3 app/services//ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")}"
+            if prev_stats.nil?
+                script = "python3 app/services/ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")}"
+            else
+                script = "python3 app/services/ml/predict_stats.py predict #{player.positionCode} #{age} #{stats.join(" ")} #{prev_stats.join(" ")}"
+            end
+
             stdout, stderr, status = Open3.capture3(script)
 
             if status.success?

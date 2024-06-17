@@ -41,8 +41,7 @@ class WebApiClient
                             awayTeamLogo: game_data["awayTeam"]["logo"],
                             homeTeamID: game_data["homeTeam"]["id"],
                             homeTeamAbbrev: game_data["homeTeam"]["abbrev"],
-                            homeTeamLogo: game_data["homeTeam"]["logo"],
-                            score: ""
+                            homeTeamLogo: game_data["homeTeam"]["logo"]
                         )
                         game.save
                     else

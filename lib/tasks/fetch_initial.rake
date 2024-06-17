@@ -59,7 +59,7 @@ desc "Fetch and save initial data"
         puts "Preparing stats for all players..."
 
         # Seasons to start and stop collecting stats from
-        start_stat_season = 20192020
+        start_stat_season = 20142015
         end_stat_season = (start_date.year.to_s + end_date.year.to_s).to_i
 
         # Don't start collecting starts from the current season until the whole season has finished
@@ -70,11 +70,19 @@ desc "Fetch and save initial data"
         # Get the existing stat records from the database
         current_stats = SkaterStat.all + GoalieStat.all
 
+        # Get the latest season from the stats database
+        latest_skater_season = SkaterStat.maximum(:season)
+        latest_goalie_season = GoalieStat.maximum(:season)
+        latest_stat_season = [latest_skater_season, latest_goalie_season].compact.max || 0
+
         players = Player.all
 
-        # Populate Stats database with the stats from all players
-        players.each do |player|
-            web_api_client.save_stats_data(player.playerID, start_stat_season, end_stat_season)
+        # Populate Stats database with the stats from all players, skip if current season stats already exist in the database
+        if latest_stat_season < end_stat_season
+            # Save stats starting from either 20142015 or the from the latest season in the database to avoid checking unchanged stats
+            players.each do |player|
+                web_api_client.save_stats_data(player.playerID, [start_stat_season, latest_stat_season].max, end_stat_season)
+            end
         end
         puts "Fetched and saved stats for all players"
 
@@ -95,7 +103,7 @@ desc "Fetch and save initial data"
         puts "Preparing prediction stats for all players..."
 
         # Populate Stats Prediction databases with the prediction stats for all players
-        ml_client.save_prediction_stats_data(different_stats_player)
+        ml_client.save_prediction_stats_data(different_stats_player, end_stat_season)
         puts "Generated and saved predicted stats for all players"
 
         puts "Preparing ratings for all players..."

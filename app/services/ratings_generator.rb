@@ -3,21 +3,22 @@ class RatingsGenerator
     def save_ratings_data(players, different_stats_player)
         # Weights of each stat for generating an accurate rating
         offensive_weights = {
-            goals: 0.4,
-            assists: 0.6,
+            goals: 0.6,
+            assists: 0.7,
             points: 0.8,
             avgToi: 0.05,
-            game_winning_goals: 0.1,
+            game_winning_goals: 0.2,
             ot_goals: 0.3,
-            powerplay_goals: 0.5,
+            powerplay_goals: 0.8,
             powerplay_points: 1.0,
             shots: 0.1
         }
         defensive_weights = {
             avgToi: 0.2,
-            plus_minus: 1.0,
-            shorthanded_goals: 2.0,
-            shorthanded_points: 4.0,
+            plus_minus: 0.7,
+            faceoff_winning_pctg: 4.0,
+            shorthanded_goals: 1.0,
+            shorthanded_points: 1.5,
             goals_against_avg: 0.2,
             shots_against: 0.03,
             shutouts: 3.0
@@ -26,8 +27,8 @@ class RatingsGenerator
             wins: 3.0,
             losses: 2.0,
             ot_losses: 1.5,
-            goals_against_avg: 0.3,
-            save_pctg: 1.2,
+            goals_against_avg: 1.0,
+            save_pctg: 2.5,
             shutouts: 2.0,
             games_played: 0.06
         }
@@ -55,7 +56,7 @@ class RatingsGenerator
         # Get ratings for each player
         players.each do |player|
             # If the players stats and prediction stats have not changed, keep the existing ratings
-            next unless different_stats_player.include?(player.playerID)
+            #next unless different_stats_player.include?(player.playerID)
 
             if player.positionCode == "G"
                 goalie_rating = 0
@@ -72,7 +73,7 @@ class RatingsGenerator
                     goalie_rating += (player_stats.savePctg * goaltending_weights[:save_pctg])
                     goalie_rating += ((player_stats.shutouts.to_f / player_stats.gamesPlayed) * goaltending_weights[:shutouts])
                     goalie_rating += (player_stats.gamesPlayed.to_f * goaltending_weights[:games_played])
-                    goalie_rating = ((goalie_rating * 10) + 35).round
+                    goalie_rating = ((goalie_rating * 10) + 45).round
                 end
 
                 # Insert the rating value into the database for the matching player
@@ -98,8 +99,7 @@ class RatingsGenerator
                     offensive_rating += ((player_stats.powerPlayGoals.to_f / player_stats.gamesPlayed) * offensive_weights[:powerplay_goals])
                     offensive_rating += ((player_stats.powerPlayPoints.to_f / player_stats.gamesPlayed) * offensive_weights[:powerplay_points])
                     offensive_rating += ((player_stats.shots.to_f / player_stats.gamesPlayed) * offensive_weights[:shots])
-                    offensive_rating += (player.positionCode != "D" ? 2.5 : 2.0)
-                    offensive_rating = ((offensive_rating * 10) + 25).round
+                    offensive_rating = ((offensive_rating * 10) + 50).round
 
                     defensive_rating += (player_stats.avgToi * defensive_weights[:avgToi])
                     defensive_rating += ((player_stats.plusMinus.to_f / player_stats.gamesPlayed) * defensive_weights[:plus_minus])
@@ -109,8 +109,10 @@ class RatingsGenerator
                     defensive_rating -= ((goals_against_avg_sum.to_f / num_goalies) * defensive_weights[:goals_against_avg])
                     defensive_rating -= ((shots_against_per_game_sum.to_f / num_goalies) * defensive_weights[:shots_against])
                     defensive_rating += ((shutouts_per_game_sum.to_f / num_goalies) * defensive_weights[:shutouts])
-                    defensive_rating += (player.positionCode == "D" ? 2.5 : (player.positionCode == "C" ? 2.0 : 1.5))
-                    defensive_rating = ((defensive_rating * 10) + 15).round
+                    defensive_rating += (player.positionCode == "D" ? 2.5 : 0.0)
+                    defensive_rating += (player.positionCode == "C" ? (player_stats.faceoffWinningPctg * defensive_weights[:faceoff_winning_pctg]) : 0.0)
+                    defensive_rating += ((player.positionCode == "L" || player.positionCode == "R") ? 1.5 : 0)
+                    defensive_rating = ((defensive_rating * 10) + 20).round
                 end
 
                 # Insert the rating value into the database for the matching player
