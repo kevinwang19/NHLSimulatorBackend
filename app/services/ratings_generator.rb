@@ -6,7 +6,8 @@ class RatingsGenerator
             goals: 0.6,
             assists: 0.7,
             points: 0.8,
-            avgToi: 0.05,
+            fwdAvgToi: 0.05,
+            defAvgToi: 0.03,
             game_winning_goals: 0.2,
             ot_goals: 0.3,
             powerplay_goals: 0.8,
@@ -56,7 +57,7 @@ class RatingsGenerator
         # Get ratings for each player
         players.each do |player|
             # If the players stats and prediction stats have not changed, keep the existing ratings
-            #next unless different_stats_player.include?(player.playerID)
+            next unless different_stats_player.include?(player.playerID)
 
             if player.positionCode == "G"
                 goalie_rating = 0
@@ -73,7 +74,7 @@ class RatingsGenerator
                     goalie_rating += (player_stats.savePctg * goaltending_weights[:save_pctg])
                     goalie_rating += ((player_stats.shutouts.to_f / player_stats.gamesPlayed) * goaltending_weights[:shutouts])
                     goalie_rating += (player_stats.gamesPlayed.to_f * goaltending_weights[:games_played])
-                    goalie_rating = ((goalie_rating * 10) + 45).round
+                    goalie_rating = ((goalie_rating * 10) + 50).round
                 end
 
                 # Insert the rating value into the database for the matching player
@@ -93,7 +94,7 @@ class RatingsGenerator
                     offensive_rating += ((player_stats.goals.to_f / player_stats.gamesPlayed) * offensive_weights[:goals])
                     offensive_rating += ((player_stats.assists.to_f / player_stats.gamesPlayed) * offensive_weights[:assists])
                     offensive_rating += ((player_stats.points.to_f / player_stats.gamesPlayed) * offensive_weights[:points])
-                    offensive_rating += (player_stats.avgToi * offensive_weights[:avgToi])
+                    offensive_rating += (player.positionCode != "D" ? player_stats.avgToi * offensive_weights[:fwdAvgToi] : player_stats.avgToi * offensive_weights[:defAvgToi])
                     offensive_rating += ((player_stats.gameWinningGoals.to_f / player_stats.gamesPlayed) * offensive_weights[:game_winning_goals])
                     offensive_rating += ((player_stats.otGoals.to_f / player_stats.gamesPlayed) * offensive_weights[:ot_goals])
                     offensive_rating += ((player_stats.powerPlayGoals.to_f / player_stats.gamesPlayed) * offensive_weights[:powerplay_goals])
@@ -109,7 +110,7 @@ class RatingsGenerator
                     defensive_rating -= ((goals_against_avg_sum.to_f / num_goalies) * defensive_weights[:goals_against_avg])
                     defensive_rating -= ((shots_against_per_game_sum.to_f / num_goalies) * defensive_weights[:shots_against])
                     defensive_rating += ((shutouts_per_game_sum.to_f / num_goalies) * defensive_weights[:shutouts])
-                    defensive_rating += (player.positionCode == "D" ? 2.5 : 0.0)
+                    defensive_rating += (player.positionCode == "D" ? 3.0 : 0.0)
                     defensive_rating += (player.positionCode == "C" ? (player_stats.faceoffWinningPctg * defensive_weights[:faceoff_winning_pctg]) : 0.0)
                     defensive_rating += ((player.positionCode == "L" || player.positionCode == "R") ? 1.5 : 0)
                     defensive_rating = ((defensive_rating * 10) + 20).round

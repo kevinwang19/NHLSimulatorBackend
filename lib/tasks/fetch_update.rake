@@ -1,5 +1,5 @@
 namespace :app do
-desc "Fetch and save updated data"
+    desc "Fetch and save updated data"
     task fetch_update: :environment do
         update_players()
         update_lineups()

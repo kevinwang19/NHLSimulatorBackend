@@ -2,15 +2,25 @@ require 'csv'
 require_relative '../csv_exporter'
 
 namespace :app do
-desc "Fetch and save initial data"
+    SEPTEMBER_MONTH = 9
+
+    desc "Fetch and save initial data"
     task fetch_initial: :environment do
         include CsvExporter
 
         web_api_client = WebApiClient.new
         api_client = ApiClient.new
 
-        start_date = Date.new(2023, 10, 1)
-        end_date = Date.new(2024, 4, 30)
+        current_date = Time.now
+
+        # If the current month is before September, fetch everything for the season that just passed, otherwise fetch the next season
+        if current_date.month < SEPTEMBER_MONTH
+            start_date = Date.new(current_date.prev_year.to_i, 10, 1)
+            end_date = Date.new(current_date.year.to_i, 4, 30)
+        else
+            start_date = Date.new(current_date.year.to_i, 10, 1)
+            end_date = Date.new(current_date.next_year.to_i, 4, 30)
+        end
 
         fetch_schedule(web_api_client, start_date, end_date)
         fetch_teams(api_client, start_date)
