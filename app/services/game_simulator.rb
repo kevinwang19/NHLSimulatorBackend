@@ -1,11 +1,6 @@
-class GameSimulator
-    AWAY = "away"
-    HOME = "home"
-    NUM_PERIODS = 3
-    PERIOD_LENGTH_MINUTES = 20
-    OVERTIME_LENGTH_MINUTES = 5
-    MINUTE_INCREMENTS = 1
+require_relative "../../config/constants"
 
+class GameSimulator
     # Simulate the games of a specific date
     def simulate_games(games, teams, players)
         # Go through each game of the specific date
@@ -51,7 +46,7 @@ class GameSimulator
                     is_away_team_penalty, is_home_team_penalty = check_penalty(is_away_team_penalty, is_home_team_penalty)
                 else
                     # If there is currently a penalty, keep it until it reaches 2 mins and then return back to even strength
-                    if penalty_min < 2
+                    if penalty_min < PENALTY_LENGTH_MINUTES
                         penalty_min += 1
                     else 
                         penalty_min = 0
@@ -265,7 +260,7 @@ class GameSimulator
         # If the score is still tied after overtime, simulate shootout
         if away_team_score == home_team_score
             # Make it a random 50/50 decision for the winner
-            if rand < 0.5
+            if rand < SHOOTOUT_WINNER_PERCENTAGE
                 away_team_score += 1
             else 
                 home_team_score += 1
@@ -308,9 +303,9 @@ class GameSimulator
     def starting_goalie(goalies)
         # Get the goalie ratings
         goalie1 = Player.find_by(playerID: goalies[0].playerID)
-        goalie2 = Player.find_by(playerID: goalies[1].playerID)
-        goalie1_rating = goalie1.defensiveRating || 0
-        goalie2_rating = goalie2.defensiveRating || 0
+        goalie2 = goalies[1] ? Player.find_by(playerID: goalies[1].playerID) : nil
+        goalie1_rating = goalie1&.defensiveRating || 0
+        goalie2_rating = goalie2&.defensiveRating || 0
 
         # Randomize which goalie starts based on the ratio of the ratings
         total_goalie_ratings = goalie1_rating + goalie2_rating
@@ -343,7 +338,7 @@ class GameSimulator
     # Whether or not a penalty was called
     def is_penalty
         # 15% chance of a penalty for either team
-        return rand < 0.15
+        return rand < PENALTY_CHANCE_PERCENTAGE
     end
 
     # Line number currently on the ice based on whether it is forwards or defensemen, and even stength or special teams
@@ -445,14 +440,14 @@ class GameSimulator
         point_getter1 = select_point_getter(players)
 
         # 5% chance the goal was unassisted
-        if rand < 0.05
+        if rand < UNASSITED_GOAL_PERCENTAGE
             goal_scorer = point_getter1
         else
             # Get the second player to receive a point on the goal
             point_getter2 = select_point_getter(players - [point_getter1])
             
             # 30% chance the goal only has 1 assist
-            if rand < 0.3
+            if rand < SINGLE_ASSISTED_GOAL_PERCENTAGE
                 # Find out which player scored the goal and which player assisted the goal
                 point_getters = [point_getter1, point_getter2]
                 goal_scorer = select_goal_scorer(point_getters)

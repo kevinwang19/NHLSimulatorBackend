@@ -1,9 +1,8 @@
-require 'csv'
-require_relative '../csv_exporter'
+require "csv"
+require_relative "../csv_exporter"
+require_relative "../../config/constants"
 
 namespace :app do
-    SEPTEMBER_MONTH = 9
-
     desc "Fetch and save initial data"
     task fetch_initial: :environment do
         include CsvExporter
@@ -23,7 +22,7 @@ namespace :app do
         end
 
         fetch_schedule(web_api_client, start_date, end_date)
-        fetch_teams(api_client, start_date)
+        fetch_teams(api_client, web_api_client, start_date)
         fetch_players(web_api_client)
         fetch_stats_and_ratings(web_api_client, start_date, end_date)
         fetch_lineups()
@@ -44,9 +43,11 @@ namespace :app do
     end
     
     # Fetch teams
-    def fetch_teams(api_client, start_date)
+    def fetch_teams(api_client, web_api_client, start_date)
         # Populate Teams database after fetching the initial schedule
         api_client.save_team_data(start_date)
+        # Populate Teams database with team conference and division from standings data
+        web_api_client.save_team_standings_data()
         puts "Fetched and saved all teams from the schedule"
     end
 
@@ -80,19 +81,15 @@ namespace :app do
         # Get the existing stat records from the database
         current_stats = SkaterStat.all + GoalieStat.all
 
-        # Get the latest season from the stats database
-        latest_skater_season = SkaterStat.maximum(:season)
-        latest_goalie_season = GoalieStat.maximum(:season)
-        latest_stat_season = [latest_skater_season, latest_goalie_season].compact.max || 0
-
         players = Player.all
 
-        # Populate Stats database with the stats from all players, skip if current season stats already exist in the database
-        if latest_stat_season < end_stat_season
-            # Save stats starting from either 20142015 or the from the latest season in the database to avoid checking unchanged stats
-            players.each do |player|
-                web_api_client.save_stats_data(player.playerID, [start_stat_season, latest_stat_season].max, end_stat_season)
-            end
+        # Save stats starting from either 20142015 or the from the latest season in the database to avoid checking unchanged stats
+        players.each do |player|
+            latest_stat_season = (player.positionCode == "G" ? 
+                GoalieStat.where(playerID: player.playerID).maximum(:season) :
+                SkaterStat.where(playerID: player.playerID).maximum(:season)) || 0
+
+            web_api_client.save_stats_data(player.playerID, [start_stat_season, latest_stat_season].max, end_stat_season)
         end
         puts "Fetched and saved stats for all players"
 
@@ -125,7 +122,7 @@ namespace :app do
 
         # Populate Players database with the offensive and defensive ratings from all players in order of teams
         players_by_team.each do |_, team_players|
-            ratings_generator.save_ratings_data(team_players, different_stats_player)
+            ratings_generator.save_initial_ratings_data(team_players, different_stats_player)
         end
         puts "Generated and saved ratings for all players"
     end

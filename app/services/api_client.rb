@@ -1,3 +1,5 @@
+require_relative "../../config/constants"
+
 class ApiClient
     include HTTParty
     base_uri "https://api.nhle.com/stats/rest"
@@ -10,7 +12,7 @@ class ApiClient
     # Save Team data to database
     def save_team_data(start_date)
         # All team data should appear in the first 2 weeks of the season
-        end_date = start_date + 14.days
+        T
 
         active_teams = []
         

@@ -1,3 +1,5 @@
+require_relative "../../config/constants"
+
 class LineupsGenerator
     # Save team lineups data to database
     def save_lineups_data(team_id, players)
@@ -23,7 +25,7 @@ class LineupsGenerator
         goalies = players.select { |player| player.positionCode == "G" }
         valid_goalies = goalies.select { |goalie| goalie["defensiveRating"] != 0 }
         goalies_order = valid_goalies.sort_by { |goalie| -goalie["defensiveRating"] }
-       
+
         # Create lines based on top overall forwards and defensemen (3 forwards and 2 defensemen on each line)
         lineup1 = overall_forwards_order[0..2] + overall_defensemen_order[0..1] + [goalies_order[0]]
         lineup2 = overall_forwards_order[3..5] + overall_defensemen_order[2..3] + [goalies_order[1]]
@@ -59,10 +61,10 @@ class LineupsGenerator
         }
 
         # Add each line to lineups database
-        save_line(team_id, 1, lineup1, special_lineups, updated_team_players_ids)
-        save_line(team_id, 2, lineup2, special_lineups, updated_team_players_ids)
-        save_line(team_id, 3, lineup3, special_lineups, updated_team_players_ids)
-        save_line(team_id, 4, lineup4, special_lineups, updated_team_players_ids)
+        save_line(team_id, LINEUP1_NUMBER, lineup1, special_lineups, updated_team_players_ids)
+        save_line(team_id, LINEUP2_NUMBER, lineup2, special_lineups, updated_team_players_ids)
+        save_line(team_id, LINEUP3_NUMBER, lineup3, special_lineups, updated_team_players_ids)
+        save_line(team_id, LINEUP4_NUMBER, lineup4, special_lineups, updated_team_players_ids)
         save_line(team_id, nil, extra, special_lineups, updated_team_players_ids)
 
         # Set current team players' teamID and lines to nil if they are no longer on the team using playerID
@@ -91,14 +93,16 @@ class LineupsGenerator
 
         # Add each player lineup stat from the line to the Lineup table
         line.each do |player|
+            next unless player
+
             # Add new lineup data to the updated team players list
             updated_team_players_ids << player.playerID
 
             # Get player position and check if player is on any special lines
             position = position(player.positionCode, player.shootsCatches, position_counters)
-            powerPlayLineNumber = special_lines[:pp1].include?(player) ? 1 : (special_lines[:pp2].include?(player) ? 2 : nil)
-            penaltyKillLineNumber = special_lines[:pk1].include?(player) ? 1 : (special_lines[:pk2].include?(player) ? 2 : nil)
-            otLineNumber = special_lines[:ot1].include?(player) ? 1 : (special_lines[:ot2].include?(player) ? 2 : nil)
+            powerPlayLineNumber = special_lines[:pp1].include?(player) ? LINEUP1_NUMBER : (special_lines[:pp2].include?(player) ? LINEUP2_NUMBER : nil)
+            penaltyKillLineNumber = special_lines[:pk1].include?(player) ? LINEUP1_NUMBER : (special_lines[:pk2].include?(player) ? LINEUP2_NUMBER : nil)
+            otLineNumber = special_lines[:ot1].include?(player) ? LINEUP1_NUMBER : (special_lines[:ot2].include?(player) ? LINEUP2_NUMBER : nil)
             
             # Find if the player already exists in the database
             existing_player = Lineup.find_by(playerID: player.playerID)

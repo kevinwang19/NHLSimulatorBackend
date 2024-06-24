@@ -1,3 +1,4 @@
+require_relative "../../config/constants"
 require "open3"
 
 class MlClient
@@ -86,7 +87,7 @@ class MlClient
             if player.positionCode == "G"
                 last_valid_stats = combined_stats.first
             else
-                last_valid_stats = combined_stats.find { |row| row.gamesPlayed > 10 }
+                last_valid_stats = combined_stats.find { |row| row.gamesPlayed > VALID_STATS_MIN_GAMES }
                 
                 # If no valid row is found, return the row with the highest season
                 last_valid_stats ||= combined_stats.first
