@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_20_205920) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_24_221347) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -94,6 +94,77 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_20_205920) do
     t.index ["date", "awayTeamID", "homeTeamID"], name: "index_games_on_all_values_unique", unique: true
   end
 
+  create_table "simulation_game_stats", primary_key: "simulationGameStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "scheduleID"
+    t.integer "awayTeamID", null: false
+    t.integer "awayTeamScore", null: false
+    t.integer "homeTeamID", null: false
+    t.integer "homeTeamScore", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_goalie_stats", primary_key: "simulationGoalieStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "playerID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "wins", default: 0, null: false
+    t.integer "losses", default: 0, null: false
+    t.integer "otLosses", default: 0, null: false
+    t.decimal "goalsAgainstPerGame", default: "0.0", null: false
+    t.integer "shutouts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_skater_stats", primary_key: "simulationSkaterStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "playerID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "goals", default: 0, null: false
+    t.integer "assists", default: 0, null: false
+    t.integer "points", default: 0, null: false
+    t.integer "powerPlayGoals", default: 0, null: false
+    t.integer "powerPlayPoints", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_team_stats", primary_key: "simulationTeamStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "teamID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "wins", default: 0, null: false
+    t.integer "losses", default: 0, null: false
+    t.integer "otLosses", default: 0, null: false
+    t.integer "points", default: 0, null: false
+    t.integer "goalsFor", default: 0, null: false
+    t.decimal "goalsForPerGame", default: "0.0", null: false
+    t.integer "goalsAgainst", default: 0, null: false
+    t.decimal "goalsAgainstPerGame", default: "0.0", null: false
+    t.integer "totalPowerPlays", default: 0, null: false
+    t.decimal "powerPlayPctg", default: "0.0", null: false
+    t.integer "totalPenaltyKills", default: 0, null: false
+    t.decimal "penaltyKillPctg", default: "0.0", null: false
+    t.integer "divisionRank"
+    t.integer "conferenceRank"
+    t.integer "leagueRank"
+    t.boolean "isWildCard"
+    t.boolean "isPresidents"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulations", primary_key: "simulationID", force: :cascade do |t|
+    t.integer "userID", null: false
+    t.integer "season", null: false
+    t.string "status", null: false
+    t.string "simulationCurrentDate", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "skater_stats", primary_key: "skaterStatID", id: :bigint, default: -> { "nextval('skater_stats_id_seq'::regclass)" }, force: :cascade do |t|
     t.integer "playerID", null: false
     t.integer "season", null: false
@@ -152,11 +223,28 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_20_205920) do
     t.index ["teamID"], name: "index_teams_on_teamID", unique: true
   end
 
+  create_table "users", primary_key: "userID", force: :cascade do |t|
+    t.string "username", null: false
+    t.integer "favTeamID"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   add_foreign_key "goalie_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "goalie_stats_predictions", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "lineups", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "lineups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "players", "teams", column: "teamID", primary_key: "teamID"
+  add_foreign_key "simulation_game_stats", "schedules", column: "scheduleID", primary_key: "scheduleID"
+  add_foreign_key "simulation_game_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_goalie_stats", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "simulation_goalie_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_skater_stats", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "simulation_skater_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_team_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_team_stats", "teams", column: "teamID", primary_key: "teamID"
+  add_foreign_key "simulations", "users", column: "userID", primary_key: "userID"
   add_foreign_key "skater_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "skater_stats_predictions", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "users", "teams", column: "favTeamID", primary_key: "teamID"
 end

@@ -7,8 +7,8 @@ namespace :app do
     task fetch_initial: :environment do
         include CsvExporter
 
-        web_api_client = WebApiClient.new
-        api_client = ApiClient.new
+        @web_api_client = WebApiClient.new
+        @api_client = ApiClient.new
 
         current_date = Time.now
 
@@ -21,15 +21,15 @@ namespace :app do
             end_date = Date.new(current_date.next_year.to_i, 4, 30)
         end
 
-        fetch_schedule(web_api_client, start_date, end_date)
-        fetch_teams(api_client, web_api_client, start_date)
-        fetch_players(web_api_client)
-        fetch_stats_and_ratings(web_api_client, start_date, end_date)
+        fetch_schedule(start_date, end_date)
+        fetch_teams(start_date)
+        fetch_players()
+        fetch_stats_and_ratings(start_date, end_date)
         fetch_lineups()
     end
 
     # Fetch schedule
-    def fetch_schedule(web_api_client, start_date, end_date)
+    def fetch_schedule(start_date, end_date)
         puts "Preparing schedule for the season..."
 
         # Number of days to iterate by
@@ -37,22 +37,22 @@ namespace :app do
 
         # Iterate through each week of the schedule and populate Schedule database
         (start_date..end_date).step(step_day_interval) do |date|
-            web_api_client.save_schedule_data(date.to_s)
+            @web_api_client.save_schedule_data(date.to_s)
         end 
         puts "Fetched and saved schedule for all games"
     end
     
     # Fetch teams
-    def fetch_teams(api_client, web_api_client, start_date)
+    def fetch_teams(start_date)
         # Populate Teams database after fetching the initial schedule
-        api_client.save_team_data(start_date)
+        @api_client.save_team_data(start_date)
         # Populate Teams database with team conference and division from standings data
-        web_api_client.save_team_standings_data()
+        @web_api_client.save_team_standings_data()
         puts "Fetched and saved all teams from the schedule"
     end
 
     # Fetch players(rosters)
-    def fetch_players(web_api_client)
+    def fetch_players()
         puts "Preparing rosters for all teams..."
 
         # Get all active teams
@@ -60,13 +60,13 @@ namespace :app do
         
         # Populate Players database with the roster from all active teams
         teams.each do |team|
-            web_api_client.save_player_data(team)
+            @web_api_client.save_player_data(team)
         end
         puts "Fetched and saved players for all rosters"
     end
 
     # Fetch stats, prediction stats, and player offensive and defensive ratings based on prediction stats
-    def fetch_stats_and_ratings(web_api_client, start_date, end_date)
+    def fetch_stats_and_ratings(start_date, end_date)
         puts "Preparing stats for all players..."
 
         # Seasons to start and stop collecting stats from
@@ -89,7 +89,7 @@ namespace :app do
                 GoalieStat.where(playerID: player.playerID).maximum(:season) :
                 SkaterStat.where(playerID: player.playerID).maximum(:season)) || 0
 
-            web_api_client.save_stats_data(player.playerID, [start_stat_season, latest_stat_season].max, end_stat_season)
+            @web_api_client.save_stats_data(player.playerID, [start_stat_season, latest_stat_season].max, end_stat_season)
         end
         puts "Fetched and saved stats for all players"
 

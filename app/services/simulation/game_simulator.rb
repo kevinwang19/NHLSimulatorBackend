@@ -1,10 +1,22 @@
 require_relative "../../config/constants"
 
 class GameSimulator
+    def initialize(simulation_info)
+        @simulation_info = simulation_info
+        @simulation_player_stats = SimulatorPlayerStats.new
+        @simulation_game_stats = SimulatorGameStats.new
+        @simulation_team_stats = SimulatorTeamStats.new
+    end
+
     # Simulate the games of a specific date
-    def simulate_games(games, teams, players)
-        # Go through each game of the specific date
-        games.each do |game|
+    def simulate_games(simulation_info, simulate_date)
+        # Get the games to be simulated from the Schedule database using the current season, and start and end simulation dates
+        current_season = Schedule.maximum(:season)
+        current_date = @simulation_info.simulationCurrentDate
+        games_to_simulate = Schedule.where(season: current_season).where("date >= ? AND date < ?", current_date, simulate_date)
+            
+        # Go through each game of the simulated dates
+        games_to_simulate.each do |game|
             # Get the lineups from the away and home teams
             away_team_id = game.awayTeamID
             away_team_lineup = Lineup.where(teamID: game.awayTeamID)
@@ -13,14 +25,18 @@ class GameSimulator
 
             puts "#{Team.find_by(teamID: away_team_id).abbrev} vs #{Team.find_by(teamID: home_team_id).abbrev}"
 
-            simulate_game(away_team_lineup, home_team_lineup, teams, away_team_id, home_team_id, players)
+            simulate_game(game.scheduleID, away_team_id, away_team_lineup, home_team_id, home_team_lineup)
         end
     end
 
     # Simulate the events and score of a game
-    def simulate_game(away_team_lineup, home_team_lineup, teams, away_id, home_id, players)
+    def simulate_game(schedule_id, away_team_id, away_team_lineup, home_team_id, home_team_lineup)
         away_team_score = 0
+        away_team_pp_goals = 0
+        away_team_penalties = 0
         home_team_score = 0
+        home_team_pp_goals = 0
+        home_team_penalties = 0
         is_away_team_penalty = false
         is_home_team_penalty = false
         penalty_min = 0
@@ -34,6 +50,14 @@ class GameSimulator
         away_team_goalie = starting_goalie(away_team_goalies)
         home_team_goalie = starting_goalie(home_team_goalies)
 
+        # Get all players of both teams that are going to be playing
+        away_players_playing = away_team_lineup.where.not(lineNumber: nil).where.not(position: "G") + away_team_goalie
+        home_players_playing = home_team_lineup.where.not(lineNumber: nil).where.not(position: "G") + home_team_goalie
+        all_players_playing = away_players_playing + home_players_playing
+
+        # Record new player games played stats
+        @simulation_player_stats.save_simulation_player_stats_initial(@simulation_info.simulationID, all_players_playing)
+
         # Simulate through 3 periods
         for period in 1..NUM_PERIODS
             # Simulate through each minute of the period
@@ -44,6 +68,9 @@ class GameSimulator
                 # If there are currently no penalties, check if there will be one
                 if even_strength
                     is_away_team_penalty, is_home_team_penalty = check_penalty(is_away_team_penalty, is_home_team_penalty)
+
+                    away_team_penalties += is_away_team_penalty ? 1 : 0
+                    home_team_penalties += is_home_team_penalty ? 1 : 0
                 else
                     # If there is currently a penalty, keep it until it reaches 2 mins and then return back to even strength
                     if penalty_min < PENALTY_LENGTH_MINUTES
@@ -110,27 +137,13 @@ class GameSimulator
                 if possession_team == AWAY
                     if attempt_shot(away_team_offensive_rating, home_team_defensive_rating)
                         if shot_on_net(away_team_offensive_rating, home_team_defensive_rating)
-                            # If a goal was scored, increment score
+                            # If a goal was scored, increment score and increment pp goals if scored on the powerplay
                             if score_goal(away_team_offensive_rating, home_team_defensive_rating)
                                 away_team_score += 1
-                                # Determine who scored the goal and got the assists
-                                goal_stats = determine_goal_stats(away_team_line)
+                                away_team_pp_goals += is_home_team_penalty ? 1 : 0
 
-                                goal_stats.each_with_index do |stat, index|
-                                    if index == 0
-                                        if players.has_key?("#{stat.firstName}_#{stat.lastName}_goals")
-                                            players["#{stat.firstName}_#{stat.lastName}_goals"] += 1
-                                        else
-                                            players["#{stat.firstName}_#{stat.lastName}_goals"] = 1
-                                        end
-                                    else 
-                                        if players.has_key?("#{stat.firstName}_#{stat.lastName}_assists")
-                                            players["#{stat.firstName}_#{stat.lastName}_assists"] += 1
-                                        else
-                                            players["#{stat.firstName}_#{stat.lastName}_assists"] = 1
-                                        end
-                                    end
-                                end
+                                # Record skater stats from the goal
+                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_line, is_home_team_penalty)
 
                                 # Return teams back to even strength
                                 penalty_min = 0
@@ -142,27 +155,13 @@ class GameSimulator
                 else
                     if attempt_shot(home_team_offensive_rating, away_team_defensive_rating)
                         if shot_on_net(home_team_offensive_rating, away_team_defensive_rating)
-                            # If a goal was scored, increment score
+                            # If a goal was scored, increment score and increment pp goals if scored on the powerplay
                             if score_goal(home_team_offensive_rating, away_team_defensive_rating)
                                 home_team_score += 1
-                                # Determine who scored the goal and got the assists
-                                goal_stats = determine_goal_stats(home_team_line)
+                                home_team_pp_goals += is_away_team_penalty ? 1 : 0
 
-                                goal_stats.each_with_index do |stat, index|
-                                    if index == 0
-                                        if players.has_key?("#{stat.firstName}_#{stat.lastName}_goals")
-                                            players["#{stat.firstName}_#{stat.lastName}_goals"] += 1
-                                        else
-                                            players["#{stat.firstName}_#{stat.lastName}_goals"] = 1
-                                        end
-                                    else 
-                                        if players.has_key?("#{stat.firstName}_#{stat.lastName}_assists")
-                                            players["#{stat.firstName}_#{stat.lastName}_assists"] += 1
-                                        else
-                                            players["#{stat.firstName}_#{stat.lastName}_assists"] = 1
-                                        end
-                                    end
-                                end
+                                # Record skater stats from the goal
+                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_line, is_away_team_penalty)
 
                                 # Return teams back to even strength
                                 penalty_min = 0
@@ -203,24 +202,9 @@ class GameSimulator
                     if shot_on_net(away_team_offensive_rating, home_team_defensive_rating)
                         if score_goal(away_team_offensive_rating, home_team_defensive_rating)
                             away_team_score += 1
-                            # Determine who scored the goal and got the assists
-                            goal_stats = determine_goal_stats(away_team_ot_line)
 
-                            goal_stats.each_with_index do |stat, index|
-                                if index == 0
-                                    if players.has_key?("#{stat.firstName}_#{stat.lastName}_goals")
-                                        players["#{stat.firstName}_#{stat.lastName}_goals"] += 1
-                                    else
-                                        players["#{stat.firstName}_#{stat.lastName}_goals"] = 1
-                                    end
-                                else 
-                                    if players.has_key?("#{stat.firstName}_#{stat.lastName}_assists")
-                                        players["#{stat.firstName}_#{stat.lastName}_assists"] += 1
-                                    else
-                                        players["#{stat.firstName}_#{stat.lastName}_assists"] = 1
-                                    end
-                                end
-                            end
+                            # Record skater stats from the goal
+                            @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_line, false)
 
                             # End simulation if a goal is scored
                             break
@@ -230,24 +214,9 @@ class GameSimulator
                     if shot_on_net(home_team_offensive_rating, away_team_defensive_rating)
                         if score_goal(home_team_offensive_rating, away_team_defensive_rating)
                             home_team_score += 1
-                            # Determine who scored the goal and got the assists
-                            goal_stats = determine_goal_stats(home_team_ot_line)
-
-                            goal_stats.each_with_index do |stat, index|
-                                if index == 0
-                                    if players.has_key?("#{stat.firstName}_#{stat.lastName}_goals")
-                                        players["#{stat.firstName}_#{stat.lastName}_goals"] += 1
-                                    else
-                                        players["#{stat.firstName}_#{stat.lastName}_goals"] = 1
-                                    end
-                                else 
-                                    if players.has_key?("#{stat.firstName}_#{stat.lastName}_assists")
-                                        players["#{stat.firstName}_#{stat.lastName}_assists"] += 1
-                                    else
-                                        players["#{stat.firstName}_#{stat.lastName}_assists"] = 1
-                                    end
-                                end
-                            end
+                            
+                            # Record skater stats from the goal
+                            @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_line, false)
                             
                             # End simulation if a goal is scored
                             break
@@ -269,34 +238,72 @@ class GameSimulator
 
         puts "Final score: #{away_team_score} - #{home_team_score}"
 
+        # Set winning team and losing team stats and goalie stats
+        if away_team_score > home_team_score
+            winning_team_id = away_team_id
+            winning_team_score = away_team_score
+            winning_team_pp_goals = away_team_pp_goals
+            winning_team_penalties = away_team_penalties
 
-        away_team = Team.find_by(teamID: away_id)
-        home_team = Team.find_by(teamID: home_id)
-        if away_team_score > home_team_score 
-            if teams.has_key?("#{away_team.abbrev}_wins")
-                teams["#{away_team.abbrev}_wins"] += 1
-            else
-                teams["#{away_team.abbrev}_wins"] = 1
-            end
-            
-            if teams.has_key?("#{home_team.abbrev}_losses")
-                teams["#{home_team.abbrev}_losses"] += 1
-            else
-                teams["#{home_team.abbrev}_losses"] = 1
-            end
-        else 
-            if teams.has_key?("#{home_team.abbrev}_wins")
-                teams["#{home_team.abbrev}_wins"] += 1
-            else
-                teams["#{home_team.abbrev}_wins"] = 1
-            end
-            
-            if teams.has_key?("#{away_team.abbrev}_losses")
-                teams["#{away_team.abbrev}_losses"] += 1
-            else
-                teams["#{away_team.abbrev}_losses"] = 1
-            end
+            losing_team_id = home_team_id
+            losing_team_score = home_team_score
+            losing_team_pp_goals = home_team_pp_goals
+            losing_team_penalties = home_team_penalties
+
+            winning_goalie = away_team_goalie
+            losing_goalie = home_team_goalie
+        else
+            winning_team_id = home_team_id
+            winning_team_score = home_team_score
+            winning_team_pp_goals = home_team_pp_goals
+            winning_team_penalties = home_team_penalties
+
+            losing_team_id = away_team_id
+            losing_team_score = away_team_score
+            losing_team_pp_goals = away_team_pp_goals
+            losing_team_penalties = away_team_penalties
+
+            winning_goalie = home_team_goalie
+            losing_goalie = away_team_goalie
         end
+
+        # Record goalie stats from the game
+        @simulation_player_stats.save_simulation_goalie_stats_win(@simulation_info.simulationID, winning_goalie, losing_team_score)
+        @simulation_player_stats.save_simulation_goalie_stats_loss(@simulation_info.simulationID, losing_goalie, winning_team_score, required_ot)
+
+        # Record game stats
+        @simulation_game_stats.save_game_stats(
+            @simulation_info.simulationID, 
+            schedule_id, 
+            away_team_id, 
+            away_team_score, 
+            home_team_id, 
+            home_team_score
+        )
+
+        # Record team stats from the game
+        @simulation_team_stats.save_team_stats_win(
+            @simulation_info.simulationID,
+            winning_team_id,
+            winning_team_score,
+            losing_team_score,
+            winning_team_pp_goals,
+            losing_team_penalties,
+            losing_team_pp_goals,
+            winning_team_penalties,
+            required_ot
+        )
+        @simulation_team_stats.save_team_stats_loss(
+            @simulation_info.simulationID,
+            losing_team_id,
+            losing_team_score,
+            winning_team_score,
+            losing_team_pp_goals,
+            winning_team_penalties,
+            winning_team_pp_goals,
+            losing_team_penalties,
+            required_ot
+        )
     end
 
     # Starting goalie of the team based on goalie ratings
@@ -427,87 +434,5 @@ class GameSimulator
         # Randomize goal scored success based on the offensive rating of the team shooting and the defensive rating of the team defending
         goal_chance = rand * (team1_offensive_rating + team2_defensive_rating)
         return goal_chance < team1_offensive_rating
-    end
-
-    # Which players got points on the goal
-    def determine_goal_stats(line)
-        player_ids = line.map(&:playerID)
-        players = Player.where(playerID: player_ids)
-        goal_scorer = nil
-        assists = []
-
-        # Get the first player to receive a point on the goal
-        point_getter1 = select_point_getter(players)
-
-        # 5% chance the goal was unassisted
-        if rand < UNASSITED_GOAL_PERCENTAGE
-            goal_scorer = point_getter1
-        else
-            # Get the second player to receive a point on the goal
-            point_getter2 = select_point_getter(players - [point_getter1])
-            
-            # 30% chance the goal only has 1 assist
-            if rand < SINGLE_ASSISTED_GOAL_PERCENTAGE
-                # Find out which player scored the goal and which player assisted the goal
-                point_getters = [point_getter1, point_getter2]
-                goal_scorer = select_goal_scorer(point_getters)
-                assists = point_getters - [goal_scorer]
-            else
-                # Get the third player to receive a point on the goal
-                point_getter3 = select_point_getter(players - [point_getter1, point_getter2])
-                
-                # Find out which player scored the goal and which players assisted the goal
-                point_getters = [point_getter1, point_getter2, point_getter3]
-                goal_scorer = select_goal_scorer(point_getters)
-                assists = point_getters - [goal_scorer]
-            end
-        end
-        
-        # Arrange the point getters by goal scorer first and then assists
-        return [goal_scorer] + assists
-    end
-
-    # Selecting a player from the line to get the point based on offensive ratings
-    def select_point_getter(players)
-        # Normalize the ratings to have ratings show a greater effect on the point getters
-        total_rating = players.sum { |player| player.offensiveRating**2 }
-        normalized_ratings = players.map { |player| (player.offensiveRating**2).to_f / total_rating.to_f }
-    
-        selection_point = rand
-        cumulative_rating = 0.0
-    
-        # Get a random decimal (0-1) and iterate through the normalized ratings until it reaches it to select the player 
-        players.zip(normalized_ratings).each do |player, normalized_rating|
-            cumulative_rating += normalized_rating
-            return player if cumulative_rating >= selection_point
-        end
-    end
-
-    # Selecting a player from the line to get the goal based on predicted goals stats
-    def select_goal_scorer(players)
-        # Get the predicted stats of the players
-        player_ids = players.map(&:playerID)
-        predicted_stats = SkaterStatsPrediction.where(playerID: player_ids)
-
-        # Get the goal to point ratios of the players predicted stat to see who is more likely to score
-        total_goal_to_point_ratios = predicted_stats.sum { |stat| stat.goals.to_f / (stat.points || 1) }
-        goal_to_point_ratios = predicted_stats.map { |stat| (stat.goals.to_f / (stat.points || 1)) / total_goal_to_point_ratios }
-    
-        selection_point = rand
-        cumulative_ratio = 0.0
-        selected_stat = nil
-        
-        # Get a random decimal (0-1) and iterate through the ratios until it reaches it to select the player stat
-        predicted_stats.zip(goal_to_point_ratios).each do |predicted_stat, goal_to_point_ratio|
-            cumulative_ratio += goal_to_point_ratio
-            if cumulative_ratio >= selection_point
-                selected_stat = predicted_stat
-                break
-            end
-        end
-        
-        # Get the player from the player stat
-        player = Player.find_by(playerID: selected_stat.playerID)
-        return player
     end
 end

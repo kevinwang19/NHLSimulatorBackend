@@ -3,24 +3,24 @@ require_relative "../../config/constants"
 namespace :app do
     desc "Fetch and save updated data"
     task fetch_update: :environment do
-        web_api_client = WebApiClient.new
+        @web_api_client = WebApiClient.new
 
         current_date = Time.now
 
         # If the current month is before September, use the previous season, otherwise use the next season
         if current_date.month < SEPTEMBER_MONTH
-            current_season = (Time.now.prev_year.to_s + Time.now.year.to_s).to_i
+            current_season = (current_date.prev_year.to_s + current_date.year.to_s).to_i
         else
-            current_season = (Time.now.year.to_s + Time.now.next_year.to_s).to_i
+            current_season = (current_date.year.to_s + current_date.next_year.to_s).to_i
         end
 
-        update_players(web_api_client)
-        update_stats_and_ratings(web_api_client, current_season)
+        update_players()
+        update_stats_and_ratings(current_season)
         update_lineups()
     end
 
     # Update players(rosters)
-    def update_players(web_api_client)
+    def update_players()
         puts "Updating rosters for all teams..."
 
         # Get all active teams
@@ -28,13 +28,13 @@ namespace :app do
         
         # Populate Players database with the roster from all active teams
         teams.each do |team|
-            web_api_client.save_player_data(team)
+            @web_api_client.save_player_data(team)
         end
         puts "Updated and saved players for all rosters"
     end
 
     # Update player stats and ratings
-    def update_stats_and_ratings(web_api_client, current_season)
+    def update_stats_and_ratings(current_season)
         puts "Updating stats for all players..."
         
         # Get the existing stat records of the current season from the database
@@ -44,7 +44,7 @@ namespace :app do
 
         # Populate Stats database with the current season stats from all players
         players.each do |player|
-            web_api_client.save_stats_data(player.playerID, current_season, current_season)
+            @web_api_client.save_stats_data(player.playerID, current_season, current_season)
         end
         puts "Updated and saved stats for all players"
 

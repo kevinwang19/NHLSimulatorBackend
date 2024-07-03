@@ -5,5 +5,5 @@ class Lineup < ApplicationRecord
 
     # Associations
     belongs_to :player, foreign_key: "playerID"
-    belongs_to :team, foreign_key: "teamID"
+    belongs_to :team, foreign_key: "teamID", optional: true
 end
