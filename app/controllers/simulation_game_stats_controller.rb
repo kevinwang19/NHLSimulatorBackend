@@ -1,37 +1,23 @@
 class SimulationGameStatsController < ApplicationController
-    # GET /simulation_game_stats
-    def index
-        @simulation_stats = SimulationGameStat.all
-        render json: @simulation_stats
-    end
+    # GET /simulation_game_stats/team_simulated_game_stats?simulationID=:simulationID&currentDate=:currentDate&teamID=:teamID&season=:season
+    def team_simulated_game_stats
+        date = Date.parse(params[:currentDate])
 
-    # GET /simulation_game_stats/:simulation_game_stat_id
-    def show
-        @simulation_stat = SimulationGameStat.find_by(simulationGameStatID: params[:simulation_game_stat_id])
-        if @simulation_stat
-            render json: @simulation_stat
-        else
-            render json: { error: "Simulated stats not found" }, status: :not_found
-        end
-    end
+        schedules = Schedule.where(
+            "(\"awayTeamID\" = :teamID OR \"homeTeamID\" = :teamID) AND season = :season AND date < :currentDate", 
+            teamID: params[:teamID], 
+            season: params[:season],
+            currentDate: params[:currentDate]
+        )
 
-    # GET /simulation_game_stats/game_simulated_stats/:simulation_id/:schedule_id
-    def game_simulated_stats
-        @simulation_stat = SimulationGameStat.find_by(simulationID: params[:simulation_id], scheduleID: params[:schedule_id])
-        if @simulation_stat
-            render json: @simulation_stat
-        else
-            render json: { error: "Game simulated stats not found" }, status: :not_found
-        end
-    end
+        schedule_ids = schedules.pluck(:scheduleID)
 
-    # GET /simulation_game_stats/simulation_stats/:simulation_id
-    def simulation_stats
-        @simulation_stats = SimulationGameStat.where(simulationID: params[:simulation_id])
+        @simulation_stats = SimulationGameStat.where(simulationID: params[:simulationID], scheduleID: schedule_ids)
+  
         if @simulation_stats
-            render json: @simulation_stats
+            render json: { gameStats: @simulation_stats }
         else
-            render json: { error: "Games simulated stats not found" }, status: :not_found
+            render json: { gameStats: [] }
         end
     end
 end

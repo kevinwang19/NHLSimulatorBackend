@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_24_221347) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_28_005840) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -112,7 +112,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_24_221347) do
     t.integer "wins", default: 0, null: false
     t.integer "losses", default: 0, null: false
     t.integer "otLosses", default: 0, null: false
-    t.decimal "goalsAgainstPerGame", default: "0.0", null: false
+    t.float "goalsAgainstPerGame", default: 0.0, null: false
     t.integer "shutouts", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -140,13 +140,13 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_24_221347) do
     t.integer "otLosses", default: 0, null: false
     t.integer "points", default: 0, null: false
     t.integer "goalsFor", default: 0, null: false
-    t.decimal "goalsForPerGame", default: "0.0", null: false
+    t.float "goalsForPerGame", default: 0.0, null: false
     t.integer "goalsAgainst", default: 0, null: false
-    t.decimal "goalsAgainstPerGame", default: "0.0", null: false
+    t.float "goalsAgainstPerGame", default: 0.0, null: false
     t.integer "totalPowerPlays", default: 0, null: false
-    t.decimal "powerPlayPctg", default: "0.0", null: false
+    t.float "powerPlayPctg", default: 0.0, null: false
     t.integer "totalPenaltyKills", default: 0, null: false
-    t.decimal "penaltyKillPctg", default: "0.0", null: false
+    t.float "penaltyKillPctg", default: 0.0, null: false
     t.integer "divisionRank"
     t.integer "conferenceRank"
     t.integer "leagueRank"

@@ -7,23 +7,36 @@ class SimulationsController < ApplicationController
         current_date = Time.now
 
         if current_date.month < SEPTEMBER_MONTH
-            simulation_start_year = current_date.prev_year
+            simulation_start_year = current_date.year - 1
             simulation_end_year = current_date.year
         else
             simulation_start_year = current_date.year
-            simulation_end_year = current_date.next_year
+            simulation_end_year = current_date.year + 1
         end
 
-        @simulation.season = (simulation_start_year.to_s + simulation_end_year.to_s).to_i
+        @simulation.season = "#{simulation_start_year}#{simulation_end_year}".to_i
         @simulation.status = "In progress"
         @simulation.simulationCurrentDate = "#{simulation_start_year}-10-01"
 
         if @simulation.save
-            SimulationPlayerStatsController.new.create({ simulationID: @simulation.simulationID })
-            SimulationTeamStatsController.new.create({ simulationID: @simulation.simulationID })
-            render json: @simulation, status: :created
+            errors = []
+
+            skater_stats_errors = SimulationSkaterStatsController.initialize_simulation_skater_stats(@simulation.simulationID)
+            errors.concat(skater_stats_errors)
+
+            goalie_stats_errors = SimulationGoalieStatsController.initialize_simulation_goalie_stats(@simulation.simulationID)
+            errors.concat(goalie_stats_errors)
+
+            team_stats_errors = SimulationTeamStatsController.initialize_simulation_team_stats(@simulation.simulationID)
+            errors.concat(team_stats_errors)
+
+            if errors.empty?
+                render json: @simulation, status: :created
+            else
+                render json: { errors: errors }, status: :unprocessable_entity
+            end
         else
-            render json: @simulation.errors, status: :unprocessable_entity
+            render json: { error: @simulation.errors}, status: :unprocessable_entity
         end  
     end
 
@@ -31,40 +44,47 @@ class SimulationsController < ApplicationController
         params.require(:simulation).permit(:userID)
     end
 
-    # POST /simulations/simulate_to_date/:simulation_id/:simulate_date
+    # PUT /simulations/simulate_to_date?simulationID=:simulationID&simulateDate=:simulateDate
     def simulate_to_date
-        @simulation = Simulation.find(params[:simulation_id])
+        simulation_id = params.require(:simulationID)
+        simulate_date = params.require(:simulateDate)
+
+        @simulation = Simulation.find_by(simulationID: simulation_id)
 
         if @simulation
-            game_simulator = GameSimulator.new(@simulation)
-            game_simulator.simulate_games(params[:simulate_date])
-            @simulation.simulationCurrentDate = params[:simulate_date]
-
-            render json: @simulation, status: :ok
+            game_simulator = Sim::GameSimulator.new(@simulation)
+            begin
+                game_simulator.simulate_games(simulate_date)
+                if @simulation.update(simulationCurrentDate: simulate_date)
+                    render json: @simulation, status: :ok
+                else
+                    render json: { error: "Failed to update simulation" }, status: :unprocessable_entity
+                end
+            rescue => e
+                render json: { error: "Simulation error: #{e.message}" }, status: :unprocessable_entity
+            end
         else
-            render json: { error: "Simulation up to date not found" }, status: :not_found
+            render json: { error: "Simulation not found" }, status: :not_found
         end
     end
 
-    # PUT /simulations/finish/:simulation_id
+    # PUT /simulations/finish?simulationID=:simulationID
     def finish
-        @simulation = Simulation.find(params[:simulation_id])
+        @simulation = Simulation.find_by(simulationID: params[:simulationID])
         if @simulation.update(status: "Finished")
             render json: @simulation
         else
-            render json: @simulation.errors, status: :unprocessable_entity
+            render json: { error: @simulation.errors}, status: :unprocessable_entity
         end
     end
 
-    # GET /simulations
-    def index
-        @simulations = Simulation.all
-        render json: @simulations
-    end
-
-    # GET /simulations/:simulation_id
-    def show
-        @simulation = Simulation.find(params[:simulation_id])
-        render json: @simulation
+    # GET /simulations/user_simulation?userID=:userID
+    def user_simulation
+        @simulation = Simulation.where(userID: params[:userID]).order(simulationID: :desc).first
+        if @simulation
+            render json: @simulation
+        else
+            render json: { error: "User simulation not found" }, status: :not_found
+        end
     end
 end

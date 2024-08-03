@@ -19,23 +19,4 @@ class SimulationTeamStat < ApplicationRecord
     # Associations
     belongs_to :simulation, foreign_key: "simulationID"
     belongs_to :team, foreign_key: "teamID"
-
-    # Default values
-    after_initialize :set_defaults
-
-    def set_defaults
-        self.gamesPlayed ||= 0
-        self.wins ||= 0
-        self.losses ||= 0
-        self.otLosses ||= 0
-        self.points ||= 0
-        self.goalsFor ||= 0
-        self.goalsForPerGame ||= 0.0
-        self.goalsAgainst ||= 0
-        self.goalsAgainstPerGame ||= 0.0
-        self.totalPowerPlays ||= 0
-        self.powerPlayPctg ||= 0.0
-        self.totalPenaltyKills ||= 0
-        self.penaltyKillPctg ||= 0.0
-    end
 end

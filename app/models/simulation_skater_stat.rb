@@ -12,16 +12,4 @@ class SimulationSkaterStat < ApplicationRecord
     # Associations
     belongs_to :simulation, foreign_key: "simulationID"
     belongs_to :player, foreign_key: "playerID"
-
-    # Default values
-    after_initialize :set_defaults
-
-    def set_defaults
-        self.gamesPlayed ||= 0
-        self.goals ||= 0
-        self.assists ||= 0
-        self.points ||= 0
-        self.powerPlayGoals ||= 0
-        self.powerPlayPoints ||= 0
-    end
 end

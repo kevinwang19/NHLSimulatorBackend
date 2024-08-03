@@ -14,11 +14,11 @@ namespace :app do
 
         # If the current month is before September, fetch everything for the season that just passed, otherwise fetch the next season
         if current_date.month < SEPTEMBER_MONTH
-            start_date = Date.new(current_date.prev_year.to_i, 10, 1)
-            end_date = Date.new(current_date.year.to_i, 4, 30)
+            start_date = Date.new((current_date.year - 1).to_i, 10, 1)
+            end_date = Date.new((current_date.year).to_i, 4, 30)
         else
-            start_date = Date.new(current_date.year.to_i, 10, 1)
-            end_date = Date.new(current_date.next_year.to_i, 4, 30)
+            start_date = Date.new((current_date.year).to_i, 10, 1)
+            end_date = Date.new((current_date.year + 1).to_i, 4, 30)
         end
 
         fetch_schedule(start_date, end_date)
@@ -71,11 +71,11 @@ namespace :app do
 
         # Seasons to start and stop collecting stats from
         start_stat_season = 20142015
-        end_stat_season = (start_date.year.to_s + end_date.year.to_s).to_i
+        end_stat_season = "#{(start_date.year)}#{end_date.year}".to_i
 
         # Don't start collecting starts from the current season until the whole season has finished
         if Date.today < end_date
-            end_stat_season = (start_date.prev_year.to_s + start_date.year.to_s).to_i
+            end_stat_season = "#{(start_date.year - 1)}#{start_date.year}".to_i
         end
         
         # Get the existing stat records from the database

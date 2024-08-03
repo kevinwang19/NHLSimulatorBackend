@@ -1,0 +1,27 @@
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/io-console-0.7.2/ext/io/console
+/Users/kevinwang/.rbenv/versions/3.3.1/bin/ruby extconf.rb
+checking for rb_io_path()... yes
+checking for rb_io_descriptor()... yes
+checking for rb_io_get_write_io()... yes
+checking for rb_io_closed_p()... yes
+checking for rb_io_open_descriptor()... yes
+checking for termios.h... yes
+checking for cfmakeraw() in termios.h... yes
+checking for sys/ioctl.h... yes
+checking for HAVE_RUBY_FIBER_SCHEDULER_H... yes
+creating Makefile
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/io-console-0.7.2/ext/io/console
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-y3rqpc sitelibdir\=./.gem.20240705-91295-y3rqpc clean
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/io-console-0.7.2/ext/io/console
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-y3rqpc sitelibdir\=./.gem.20240705-91295-y3rqpc
+compiling console.c
+linking shared-object io/console.bundle
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/io-console-0.7.2/ext/io/console
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-y3rqpc sitelibdir\=./.gem.20240705-91295-y3rqpc install
+/usr/local/bin/ginstall -c -m 0755 console.bundle ./.gem.20240705-91295-y3rqpc/io
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/io-console-0.7.2/ext/io/console
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-y3rqpc sitelibdir\=./.gem.20240705-91295-y3rqpc clean

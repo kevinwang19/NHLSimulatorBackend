@@ -9,9 +9,9 @@ namespace :app do
 
         # If the current month is before September, use the previous season, otherwise use the next season
         if current_date.month < SEPTEMBER_MONTH
-            current_season = (current_date.prev_year.to_s + current_date.year.to_s).to_i
+            current_season = "#{current_date.year - 1}#{current_date.year}".to_i
         else
-            current_season = (current_date.year.to_s + current_date.next_year.to_s).to_i
+            current_season = "#{current_date.year}#{current_date.year + 1}".to_i
         end
 
         update_players()

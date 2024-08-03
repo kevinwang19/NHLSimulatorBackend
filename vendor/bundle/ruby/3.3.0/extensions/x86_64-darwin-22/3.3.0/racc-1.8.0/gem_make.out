@@ -1,0 +1,18 @@
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/racc-1.8.0/ext/racc/cparse
+/Users/kevinwang/.rbenv/versions/3.3.1/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/racc-1.8.0/ext/racc/cparse
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-85ecdf sitelibdir\=./.gem.20240705-91295-85ecdf clean
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/racc-1.8.0/ext/racc/cparse
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-85ecdf sitelibdir\=./.gem.20240705-91295-85ecdf
+compiling cparse.c
+linking shared-object racc/cparse.bundle
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/racc-1.8.0/ext/racc/cparse
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-85ecdf sitelibdir\=./.gem.20240705-91295-85ecdf install
+/usr/local/bin/ginstall -c -m 0755 cparse.bundle ./.gem.20240705-91295-85ecdf/racc
+
+current directory: /Users/kevinwang/Documents/Projects/NHLSimulatorBackend/vendor/bundle/ruby/3.3.0/gems/racc-1.8.0/ext/racc/cparse
+make DESTDIR\= sitearchdir\=./.gem.20240705-91295-85ecdf sitelibdir\=./.gem.20240705-91295-85ecdf clean

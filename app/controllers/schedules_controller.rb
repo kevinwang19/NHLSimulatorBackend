@@ -1,47 +1,33 @@
 class SchedulesController < ApplicationController
-    # GET /schedules
-    def index
-        @schedules = Schedule.where.not(awayTeamID: nil).where.not(homeTeamID: nil)
-        render json: @schedules
-    end
-
-    # GET /schedules/:schedule_id
-    def show
-        @schedule = Schedule.find_by(scheduleID: params[:schedule_id])
+    # GET /schedules/team_date_schedule?teamID=:teamID&date=:date
+    def team_date_schedule
+        @schedule = Schedule.find_by(
+            "(\"awayTeamID\" = :teamID OR \"homeTeamID\" = :teamID) AND date = :date", 
+            teamID: params[:teamID], 
+            date: params[:date]
+        )
+  
         if @schedule
-            render json: @schedule
+            render json: { schedules: [@schedule]}
         else
-            render json: { error: "Schedule not found" }, status: :not_found
+            render json: { schedules: [] }
         end
     end
 
-    # GET /schedules/game_schedules/:date/:away_team_id/:home_team_id
-    def game_schedule
-        @schedule = Schedule.find_by(date: params[:date], awayTeamID: params[:away_team_id], homeTeamID: params[:home_team_id])
-        if @schedule
-            render json: @schedule
-        else
-            render json: { error: "Schedule not found for the game" }, status: :not_found
-        end
-    end
-
-    # GET /schedules/date_schedules/:date
-    def date_schedules
-        @schedules = Schedule.where(date: params[:date])
+    # GET /schedules/team_month_schedules?teamID=:teamID&season=:season&month=:month
+    def team_month_schedules
+        month_string = params[:month].to_s.rjust(2, "0") # Ensure the month is two digits
+        @schedules = Schedule.where(
+            "(\"awayTeamID\" = :teamID OR \"homeTeamID\" = :teamID) AND SUBSTRING(date, 6, 2) = :month AND season = :season", 
+            teamID: params[:teamID], 
+            season: params[:season],
+            month: month_string
+        )
+  
         if @schedules
-            render json: @schedules
+            render json: { schedules: @schedules }
         else
-            render json: { error: "Schedule not found for the date" }, status: :not_found
-        end
-    end
-
-     # GET /schedules/team_season_schedules/:team_id/:season
-     def team_season_schedules
-        @schedules = Schedule.where("awayTeamID = :teamID OR homeTeamID = :teamID", teamID: params[:team_id], season: params[:season])
-        if @schedules
-            render json: @schedules
-        else
-            render json: { error: "Season schedule not found for the team" }, status: :not_found
+            render json: { error: "Month schedule not found for the team" }, status: :not_found
         end
     end
 end
