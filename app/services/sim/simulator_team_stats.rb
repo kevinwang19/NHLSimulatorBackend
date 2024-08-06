@@ -10,7 +10,7 @@ module Sim
                 new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
                 # Get the team ranks and standings info
-                division_rank, conference_rank, league_rank, is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
+                is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
 
                 # Update winning team stats since the record exists from the initial games played addition/update
                 team_stat.update(
@@ -25,9 +25,6 @@ module Sim
                     powerPlayPctg: new_pp_pctg,
                     totalPenaltyKills: new_total_pks,
                     penaltyKillPctg: new_pk_pctg,
-                    divisionRank: division_rank,
-                    conferenceRank: conference_rank,
-                    leagueRank: league_rank,
                     isWildCard: is_wildcard,
                     isPresidents: is_presidents
                 )
@@ -44,7 +41,7 @@ module Sim
                 new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
                 # Get the team ranks and standings stats
-                division_rank, conference_rank, league_rank, is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
+                is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
 
                 # Update winning team stats since the record exists from the initial games played addition/update
                 team_stat.update(
@@ -60,9 +57,6 @@ module Sim
                     powerPlayPctg: new_pp_pctg,
                     totalPenaltyKills: new_total_pks,
                     penaltyKillPctg: new_pk_pctg,
-                    divisionRank: division_rank,
-                    conferenceRank: conference_rank,
-                    leagueRank: league_rank,
                     isWildCard: is_wildcard,
                     isPresidents: is_presidents
                 )
@@ -128,10 +122,17 @@ module Sim
                 ]
             end
 
-            # Find the ranks in the division, conference, and league of the current team
-            division_rank = sorted_division_standings.find_index { |team| team.teamID == team_id }
-            conference_rank = sorted_conference_standings.find_index { |team| team.teamID == team_id }
-            league_rank = sorted_league_standings.find_index { |team| team.teamID == team_id }
+            sorted_division_standings.each_with_index do |division_team, index|
+                division_team.update(divisionRank: index + 1)
+            end
+
+            sorted_conference_standings.each_with_index do |conference_team, index|
+                conference_team.update(conferenceRank: index + 1)
+            end
+
+            sorted_league_standings.each_with_index do |league_team, index|
+                league_team.update(leagueRank: index + 1)
+            end
 
             # See if the current team is a wilcard team based on if its 4th or 5th in division standings and from 4th-8th in conference standings
             potential_division_wildcard_team_ids = sorted_division_standings[3..4].map { |team| team.teamID }
@@ -139,9 +140,10 @@ module Sim
             is_wildcard = potential_division_wildcard_team_ids.include?(team_id) && potential_conference_wildcard_team_ids.include?(team_id)
             
             # See if the team is in first in the league
+            league_rank = sorted_league_standings.find_index { |team| team.teamID == team_id }
             is_presidents = (league_rank == 1)
 
-            return [division_rank, conference_rank, league_rank, is_wildcard, is_presidents]
+            return [is_wildcard, is_presidents]
         end
     end
 end

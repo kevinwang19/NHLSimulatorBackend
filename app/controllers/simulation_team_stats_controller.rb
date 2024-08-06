@@ -74,7 +74,7 @@ class SimulationTeamStatsController < ApplicationController
                 leagueRank: @simulation_stat.leagueRank,
                 isWildCard: @simulation_stat.isWildCard,
                 isPresidents: @simulation_stat.isPresidents
-              }
+            }
         else
             render json: { error: "Team simulated stats not found" }, status: :not_found
         end

@@ -44,17 +44,18 @@ class SimulationsController < ApplicationController
         params.require(:simulation).permit(:userID)
     end
 
-    # PUT /simulations/simulate_to_date?simulationID=:simulationID&simulateDate=:simulateDate
+    # PUT /simulations/simulate_to_date?simulationID=:simulationID&simulateDate=:simulateDate&playersAndLineups=:playersAndLineups
     def simulate_to_date
         simulation_id = params.require(:simulationID)
         simulate_date = params.require(:simulateDate)
+        players_and_lineups = params.require(:playersAndLineups)
 
         @simulation = Simulation.find_by(simulationID: simulation_id)
 
         if @simulation
             game_simulator = Sim::GameSimulator.new(@simulation)
             begin
-                game_simulator.simulate_games(simulate_date)
+                game_simulator.simulate_games(players_and_lineups)
                 if @simulation.update(simulationCurrentDate: simulate_date)
                     render json: @simulation, status: :ok
                 else

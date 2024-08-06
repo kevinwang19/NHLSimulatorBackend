@@ -16,20 +16,18 @@ module Sim
 
         # Which players got points on the goal
         def determine_scoring_log(line)
-            player_ids = line.map(&:playerID)
-            players = Player.where(playerID: player_ids)
             goal_scorer = nil
             assists = []
 
             # Get the first player to receive a point on the goal
-            point_getter1 = select_point_getter(players)
+            point_getter1 = select_point_getter(line)
 
             # 5% chance the goal was unassisted
             if rand < UNASSITED_GOAL_PERCENTAGE
                 goal_scorer = point_getter1
             else
                 # Get the second player to receive a point on the goal
-                point_getter2 = select_point_getter(players - [point_getter1])
+                point_getter2 = select_point_getter(line - [point_getter1])
                 
                 # 30% chance the goal only has 1 assist
                 if rand < SINGLE_ASSISTED_GOAL_PERCENTAGE
@@ -39,7 +37,7 @@ module Sim
                     assists = point_getters - [goal_scorer]
                 else
                     # Get the third player to receive a point on the goal
-                    point_getter3 = select_point_getter(players - [point_getter1, point_getter2])
+                    point_getter3 = select_point_getter(line - [point_getter1, point_getter2])
                     
                     # Find out which player scored the goal and which players assisted the goal
                     point_getters = [point_getter1, point_getter2, point_getter3]
@@ -55,8 +53,8 @@ module Sim
         # Selecting a player from the line to get the point based on offensive ratings
         def select_point_getter(players)
             # Normalize the ratings to have ratings show a greater effect on the point getters
-            total_rating = players.sum { |player| player.offensiveRating**2 }
-            normalized_ratings = players.map { |player| (player.offensiveRating**2).to_f / total_rating.to_f }
+            total_rating = players.sum { |player| player["offensiveRating"]**2 }
+            normalized_ratings = players.map { |player| (player["offensiveRating"]**2).to_f / total_rating.to_f }
         
             selection_point = rand
             cumulative_rating = 0.0
@@ -71,7 +69,7 @@ module Sim
         # Selecting a player from the line to get the goal based on predicted goals stats
         def select_goal_scorer(players)
             # Get the predicted stats of the players
-            player_ids = players.map(&:playerID)
+            player_ids = players.map { |player| player["playerID"] }
             predicted_stats = SkaterStatsPrediction.where(playerID: player_ids)
 
             # Get the goal to point ratios of the players predicted stat to see who is more likely to score
@@ -101,9 +99,9 @@ module Sim
             # Get each player that is playing
             players.each do |player|
                 # Save goalie stats to SimulationGoalieStat and skater stats to SimulationSkaterStat
-                if player.position == "G"
+                if player["position"] == "G"
                     # Find the current simulation goalie stats from the database
-                    goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: player.playerID)
+                    goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
 
                     # Update games played stat since the record exists from the simulation initiation
                     if goalie_stat
@@ -111,7 +109,7 @@ module Sim
                     end
                 else
                     # Find the current simulation skater stats from the database
-                    skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: player.playerID)
+                    skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
 
                     # Update games played stat since the record exists from the simulation initiation
                     if skater_stat
@@ -124,7 +122,7 @@ module Sim
         # Save goal scorer simulated stats to SimulationSkaterStats database
         def save_simulation_skater_stats_goal(simulation_id, skater, is_powerplay)
             # Find the current simulation skater stats from the database
-            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater.playerID)
+            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
 
             # Update goal stats since the record exists from the simulation initiation
             if skater_stat
@@ -140,7 +138,7 @@ module Sim
         # Save assist simulated stats to SimulationSkaterStats database
         def save_simulation_skater_stats_assist(simulation_id, skater, is_powerplay)
             # Find the current simulation skater stats from the database
-            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater.playerID)
+            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
 
             # Update assist stats since the record exists from the simulation initiation
             if skater_stat
@@ -155,7 +153,7 @@ module Sim
         # Save winning goalie simulated stats to SimulationGoalieStats database
         def save_simulation_goalie_stats_win(simulation_id, goalie, goals_allowed)
             # Find the current simulation goalie stats from the database
-            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie.playerID)
+            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
 
             # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
             total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)
@@ -175,7 +173,7 @@ module Sim
         # Save losing goalie simulated stats to SimulationGoalieStats database
         def save_simulation_goalie_stats_loss(simulation_id, goalie, goals_allowed, required_ot)
             # Find the current simulation goalie stats from the database
-            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie.playerID)
+            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
 
             # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
             total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)

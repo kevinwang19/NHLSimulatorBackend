@@ -21,29 +21,35 @@ class SimulationGoalieStatsController < ApplicationController
 
         errors
     end
-    
-    # GET /simulation_goalie_stats
-    def index
-        @simulation_stats = SimulationGoalieStat.all
-        render json: { simulation_goalie_stats: @simulation_stats }
-    end
 
-    # GET /simulation_goalie_stats/:simulationID/:playerID
-    def show
+    # GET /simulation_goalie_stats/simulation_individual_stat?simulationID=:simulationID&playerID=:playerID
+    def simulation_individual_stat
         @simulation_stat = SimulationGoalieStat.find_by(simulationID: params[:simulationID], playerID: params[:playerID])
+        
         if @simulation_stat
-            render json: { simulation_goalie_stats: @simulation_stat }
+            render json: { goalieStats: @simulation_stat }
         else
             render json: { error: "Goalie simulated stats not found" }, status: :not_found
         end
     end
 
-    # GET /simulation_goalie_stats/simulation_stats/:simulationID
-    def simulation_stats
-        @simulation_stats = SimulationGoalieStat.where(simulationID: params[:simulationID])
+    # GET /simulation_goalie_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID
+    def simulation_team_stats
+        if params[:teamID] == 0
+            @simulation_stats = SimulationGoalieStat.joins(:player)
+                .where(simulationID: params[:simulationID])
+                .where("\"gamesPlayed\" > 0")
+                .select("\"simulation_goalie_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        else
+            player_ids = Player.where(teamID: params[:teamID]).pluck(:playerID)
+            @simulation_stats = SimulationGoalieStat.joins(:player)
+                .where(simulationID: params[:simulationID], playerID: player_ids)
+                .where("\"gamesPlayed\" > 0")
+                .select("\"simulation_goalie_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        end
 
         if @simulation_stats
-            render json: { simulation_goalie_stats: @simulation_stats }
+            render json: { goalieStats: @simulation_stats }
         else
             render json: { error: "Goalies simulated stats not found" }, status: :not_found
         end

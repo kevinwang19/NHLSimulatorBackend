@@ -22,28 +22,58 @@ class SimulationSkaterStatsController < ApplicationController
         errors
     end
     
-    # GET /simulation_skater_stats
-    def index
-        @simulation_stats = SimulationSkaterStat.all
-        render json: { simulation_skater_stats: @simulation_stats }
-    end
-
-    # GET /simulation_skater_stats/:simulationID/:playerID
-    def show
+    # GET /simulation_skater_stats/simulation_individual_stat?simulationID=:simulationID&playerID=:playerID
+    def simulation_individual_stat
         @simulation_stat = SimulationSkaterStat.find_by(simulationID: params[:simulationID], playerID: params[:playerID])
+        
         if @simulation_stat
-            render json: { simulation_skater_stats: @simulation_stat }
+            render json: { skaterStats: @simulation_stat }
         else
             render json: { error: "Skater simulated stats not found" }, status: :not_found
         end
     end
 
-    # GET /simulation_skater_stats/simulation_stats/:simulationID
-    def simulation_stats
-        @simulation_stats = SimulationSkaterStat.where(simulationID: params[:simulationID])
+    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID
+    def simulation_team_stats
+        if params[:teamID] == 0
+            @simulation_stats = SimulationSkaterStat.joins(:player)
+                .where(simulationID: params[:simulationID])
+                .where("\"gamesPlayed\" > 0")
+                .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        else
+            player_ids = Player.where(teamID: params[:teamID]).pluck(:playerID)
+            @simulation_stats = SimulationSkaterStat.joins(:player)
+                .where(simulationID: params[:simulationID], playerID: player_ids)
+                .where("\"gamesPlayed\" > 0")
+                .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        end
 
         if @simulation_stats
-            render json: { simulation_skater_stats: @simulation_stats }
+            render json: { skaterStats: @simulation_stats }
+        else
+            render json: { error: "Skaters simulated stats not found" }, status: :not_found
+        end
+    end
+
+    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID&postion=:position
+    def simulation_team_position_stats
+        if params[:teamID] == 0
+            @simulation_stats = SimulationSkaterStat.joins(:player)
+                .where(simulationID: params[:simulationID])
+                .where("\"gamesPlayed\" > 0")
+                .where(players: { positionCode: params[:position] })
+                .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        else
+            player_ids = Player.where(teamID: params[:teamID]).pluck(:playerID)
+            @simulation_stats = SimulationSkaterStat.joins(:player)
+                .where(simulationID: params[:simulationID], playerID: player_ids)
+                .where("\"gamesPlayed\" > 0")
+                .where(players: { positionCode: params[:position] })
+                .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
+        end
+
+        if @simulation_stats
+            render json: { skaterStats: @simulation_stats }
         else
             render json: { error: "Skaters simulated stats not found" }, status: :not_found
         end

@@ -8,9 +8,6 @@ Rails.application.routes.draw do
 
     # Routes for players
     get "players", to: "players#index", as: "all_players"
-    get "players/:playerID", to: "players#show", as: "player"
-    get "players/name_player/:firstName/:lastName/:playerCode", to: "players#name_player", as: "name_player"
-    get "players/team_players/:teamID", to: "players#team_players", as: "team_players"
 
     # Routes for skater stats
     get "skater_stats", to: "skater_stats#index", as: "all_skater_stats"
@@ -34,9 +31,6 @@ Rails.application.routes.draw do
 
     # Routes for lineups
     get "lineups", to: "lineups#index", as: "all_lineups"
-    get "lineups/:lineupID", to: "lineups#show", as: "lineup"
-    get "lineups/player_lineup/:playerID", to: "lineups#player_lineup", as: "player_lineup"
-    get "lineups/team_lineup/:teamID", to: "lineups#team_lineup", as: "team_lineup"
 
     # Routes for users
     post "users", to: "users#create", as: "create_user"
@@ -48,14 +42,13 @@ Rails.application.routes.draw do
     get "simulations/user_simulation", to: "simulations#user_simulation", as: "user_recent_simulation"
 
     # Routes for simulation skater stats
-    get "simulation_skater_stats", to: "simulation_skater_stats#index", as: "all_simulation_skater_stats"
-    get "simulation_skater_stats/:simulationID/:playerID", to: "simulation_skater_stats#show", as: "simulation_skater_stat"
-    get "simulation_skater_stats/simulation_stats/:simulationID", to: "simulation_skater_stats#simulation_stats", as: "simulation_all_skater_stats"
+    get "simulation_skater_stats/simulation_individual_stat", to: "simulation_skater_stats#simulation_individual_stat", as: "simulation_individual_skaterstat"
+    get "simulation_skater_stats/simulation_team_stats", to: "simulation_skater_stats#simulation_team_stats", as: "simulation_team_skater_stats"
+    get "simulation_skater_stats/simulation_team_position_stats", to: "simulation_skater_stats#simulation_team_position_stats", as: "simulation_team_position_stats"
   
     # Routes for simulation goalie stats
-    get "simulation_goalie_stats", to: "simulation_goalie_stats#index", as: "all_simulation_goalie_stats"
-    get "simulation_goalie_stats/:simulationID/:playerID", to: "simulation_goalie_stats#show", as: "simulation_goalie_stat"
-    get "simulation_goalie_stats/simulation_stats/:simulationID", to: "simulation_goalie_stats#simulation_stats", as: "simulated_all_goalie_stats"
+    get "simulation_goalie_stats/simulation_individual_stat", to: "simulation_goalie_stats#simulation_individual_stat", as: "simulation_individual_goalie_stat"
+    get "simulation_goalie_stats/simulation_team_stats", to: "simulation_goalie_stats#simulation_team_stats", as: "simulation_team_goalie_stats"
   
     # Routes for simulation team stats
     get "simulation_team_stats/team_simulated_stats", to: "simulation_team_stats#team_simulated_stats", as: "team_simulated_stats"

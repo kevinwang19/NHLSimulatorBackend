@@ -10,19 +10,19 @@ module Sim
         end
 
         # Simulate the games of a specific date
-        def simulate_games(simulate_date)
+        def simulate_games(players_and_lineups)
             # Get the games to be simulated from the Schedule database using the current season, and start and end simulation dates
             current_season = Schedule.maximum(:season)
             current_date = @simulation_info.simulationCurrentDate
-            games_to_simulate = Schedule.where(season: current_season).where("date >= ? AND date < ?", current_date, simulate_date)
+            games_to_simulate = Schedule.where(season: current_season).where(date: current_date)
                 
             # Go through each game of the simulated dates
             games_to_simulate.each do |game|
                 # Get the lineups from the away and home teams
                 away_team_id = game.awayTeamID
-                away_team_lineup = Lineup.where(teamID: game.awayTeamID)
+                away_team_lineup = players_and_lineups.select { |player| player["teamID"] == away_team_id }
                 home_team_id = game.homeTeamID
-                home_team_lineup = Lineup.where(teamID: game.homeTeamID)
+                home_team_lineup = players_and_lineups.select { |player| player["teamID"] == home_team_id }
 
                 simulate_game(game.scheduleID, away_team_id, away_team_lineup, home_team_id, home_team_lineup)
             end
@@ -42,21 +42,22 @@ module Sim
             required_ot = false
 
             # Get the list of goalies from both teams
-            away_team_goalies = away_team_lineup.select { |player| player.position == "G" }
-            home_team_goalies = home_team_lineup.select { |player| player.position == "G" }
+            away_team_goalies = away_team_lineup.select { |player| player["position"] == "G" }
+            home_team_goalies = home_team_lineup.select { |player| player["position"] == "G" }
 
             # Get the starting goalies of both teams
             away_team_goalie = starting_goalie(away_team_goalies)
             home_team_goalie = starting_goalie(home_team_goalies)
 
             # Get all players of both teams that are going to be playing
-            away_players_playing = away_team_lineup.where.not(lineNumber: nil).where.not(position: "G") + [away_team_goalie]
-            home_players_playing = home_team_lineup.where.not(lineNumber: nil).where.not(position: "G") + [home_team_goalie]
+            away_players_playing = away_team_lineup.reject { |player| player["position"] == "G" || player["lineNumber"].nil? || player["lineNumber"].zero? } + [away_team_goalie]
+            home_players_playing = home_team_lineup.reject { |player| player["position"] == "G" || player["lineNumber"].nil? || player["lineNumber"].zero? } + [home_team_goalie]
             all_players_playing = away_players_playing + home_players_playing
 
             # Record new player games played stats
             @simulation_player_stats.save_simulation_player_stats_initial(@simulation_info.simulationID, all_players_playing)
 
+            test = Schedule.maximum(:season)
             # Simulate through 3 periods
             for period in 1..NUM_PERIODS
                 # Simulate through each minute of the period
@@ -91,46 +92,39 @@ module Sim
 
                     forward_positions = ["C", "LW", "RW"]
                     defensemen_positions = ["LD", "RD"]
-                    
-                    # If even strength, different forward and defensemen pairings can be on the ice
-                    away_team_regular_line = away_team_lineup.select { |player| 
-                        (forward_positions.include?(player.position) && player.lineNumber == away_team_fwd_line_number) || 
-                        (defensemen_positions.include?(player.position) && player.lineNumber == away_team_def_line_number)
-                    }
-                    home_team_regular_line = home_team_lineup.select { |player| 
-                        (forward_positions.include?(player.position) && player.lineNumber == home_team_fwd_line_number) || 
-                        (defensemen_positions.include?(player.position) && player.lineNumber == home_team_def_line_number)
-                    }
-
-                    # If special team, same powerplay and penalty kill forward and defensemen pairings are on the ice
-                    away_team_pp_line = away_team_lineup.select { |player| player.powerPlayLineNumber == away_team_fwd_line_number && player.position != "G" }
-                    away_team_pk_line = away_team_lineup.select { |player| player.penaltyKillLineNumber == away_team_fwd_line_number && player.position != "G" }
-                    home_team_pp_line = home_team_lineup.select { |player| player.powerPlayLineNumber == home_team_fwd_line_number && player.position != "G" }
-                    home_team_pk_line = home_team_lineup.select { |player| player.penaltyKillLineNumber == home_team_fwd_line_number && player.position != "G" }
 
                     # Determine the current line and the offensive and defensive ratings of both teams based on the type of line on the ice
-                    if even_strength 
-                        away_team_line = away_team_regular_line
-                        home_team_line = home_team_regular_line
+                    if even_strength
+                        # If even strength, different forward and defensemen pairings can be on the ice
+                        away_team_line = away_team_lineup.select { |player| 
+                            (forward_positions.include?(player["position"]) && player["lineNumber"] == away_team_fwd_line_number) || 
+                            (defensemen_positions.include?(player["position"]) && player["lineNumber"] == away_team_def_line_number)
+                        }
+                        home_team_line = home_team_lineup.select { |player| 
+                            (forward_positions.include?(player["position"]) && player["lineNumber"] == home_team_fwd_line_number) || 
+                            (defensemen_positions.include?(player["position"]) && player["lineNumber"] == home_team_def_line_number)
+                        }
 
-                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_regular_line, away_team_goalie)
-                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_regular_line, home_team_goalie)
+                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_line, away_team_goalie)
+                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_line, home_team_goalie)
                     elsif is_away_team_penalty
-                        away_team_line = away_team_pk_line
-                        home_team_line = home_team_pp_line
+                         # If special team, same powerplay and penalty kill forward and defensemen pairings are on the ice
+                        away_team_line = away_team_lineup.select { |player| player["penaltyKillLineNumber"] == away_team_fwd_line_number && player["position"] != "G" }
+                        home_team_line = home_team_lineup.select { |player| player["powerPlayLineNumber"] == home_team_fwd_line_number && player["position"] != "G" }
 
-                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_pk_line, away_team_goalie)
-                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_pp_line, home_team_goalie)
+                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_line, away_team_goalie)
+                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_line, home_team_goalie)
                     else
-                        away_team_line = away_team_pp_line
-                        home_team_line = home_team_pk_line
+                         # If special team, same powerplay and penalty kill forward and defensemen pairings are on the ice
+                        away_team_line = away_team_lineup.select { |player| player["powerPlayLineNumber"] == away_team_fwd_line_number && player["position"] != "G" }
+                        home_team_line = home_team_lineup.select { |player| player["penaltyKillLineNumber"] == home_team_fwd_line_number && player["position"] != "G" }
 
-                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_pp_line, away_team_goalie)
-                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_pk_line, home_team_goalie)
+                        away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_line, away_team_goalie)
+                        home_team_offensive_rating, home_team_defensive_rating = determine_team_ratings(home_team_line, home_team_goalie)
                     end
 
                     # Determine which team has posession of the puck
-                    possession_team = determine_possession(away_team_regular_line, home_team_regular_line, is_away_team_penalty, is_home_team_penalty)
+                    possession_team = determine_possession(away_team_line, home_team_line, is_away_team_penalty, is_home_team_penalty)
 
                     # Compare ratings with randomization to determine if a shot was attempted, then if it was on net, and then if a goal was scored
                     if possession_team == AWAY
@@ -186,8 +180,8 @@ module Sim
                     home_team_line_number = line_number_on_ice(true, false)
 
                     # Set the overtime lines for both teams
-                    away_team_ot_line = away_team_lineup.select { |player| player.otLineNumber == away_team_line_number && player.position != "G" }
-                    home_team_ot_line = home_team_lineup.select { |player| player.otLineNumber == home_team_line_number && player.position != "G" }
+                    away_team_ot_line = away_team_lineup.select { |player| player["otLineNumber"] == away_team_line_number && player["position"] != "G" }
+                    home_team_ot_line = home_team_lineup.select { |player| player["otLineNumber"] == home_team_line_number && player["position"] != "G" }
     
                     # Determine the offensive and defensive ratings of both teams based on the line on the ice for overtime
                     away_team_offensive_rating, away_team_defensive_rating = determine_team_ratings(away_team_ot_line, away_team_goalie)
@@ -304,17 +298,19 @@ module Sim
 
         # Starting goalie of the team based on goalie ratings
         def starting_goalie(goalies)
-            # Get the goalie ratings
-            goalie1 = Player.find_by(playerID: goalies[0].playerID)
-            goalie2 = goalies[1] ? Player.find_by(playerID: goalies[1].playerID) : nil
-            goalie1_rating = goalie1&.defensiveRating || 0
-            goalie2_rating = goalie2&.defensiveRating || 0
+            if goalies[1]
+                # Get the goalie ratings
+                goalie1_rating = goalies[0]["defensiveRating"]
+                goalie2_rating =  goalies[1]["defensiveRating"]
 
-            # Randomize which goalie starts based on the ratio of the ratings
-            total_goalie_ratings = goalie1_rating + goalie2_rating
-            starting_chance = rand * total_goalie_ratings
-        
-            return starting_chance <= goalie1_rating ? goalies[0] : goalies[1]
+                # Randomize which goalie starts based on the ratio of the ratings
+                total_goalie_ratings = goalie1_rating + goalie2_rating
+                starting_chance = rand * total_goalie_ratings
+            
+                return starting_chance <= goalie1_rating ? goalies[0] : goalies[1]
+            else
+                return goalies[0]
+            end
         end
 
         # Check the penalty statuses of both teams
@@ -377,12 +373,9 @@ module Sim
 
         # Offensive or defensive rating sum of the entire line
         def determine_team_ratings(team_line, team_goalie)
-            # Find the ratings of the line players in the Player database and sum them up
-            player_ids = team_line.map(&:playerID)
-            players = Player.where(playerID: player_ids)
-            goalie = Player.find_by(playerID: team_goalie.playerID)
-            total_offensive_rating = players.sum(&:offensiveRating)
-            total_defensive_rating = players.sum(&:defensiveRating) + goalie.defensiveRating
+            # Sum up the offensive and defensive ratings
+            total_offensive_rating = team_line.sum { |player| player["offensiveRating"] }
+            total_defensive_rating = team_line.sum { |player| player["defensiveRating"] } + team_goalie["defensiveRating"]
         
             return [total_offensive_rating, total_defensive_rating]
         end
@@ -397,13 +390,8 @@ module Sim
                 return AWAY
             # If even strength, sum up the offensive and defensive ratings of all line players and use it to randomize which line has possession
             else
-                away_player_ids = away_team_line.map(&:playerID)
-                away_players = Player.where(playerID: away_player_ids)
-                home_player_ids = home_team_line.map(&:playerID)
-                home_players = Player.where(playerID: home_player_ids)
-
-                total_away_line_rating = away_players.sum(&:offensiveRating) + away_players.sum(&:defensiveRating)
-                total_home_line_rating = home_players.sum(&:offensiveRating) + home_players.sum(&:defensiveRating)
+                total_away_line_rating = away_team_line.sum { |player| player["offensiveRating"] } + away_team_line.sum { |player| player["defensiveRating"] }
+                total_home_line_rating = home_team_line.sum { |player| player["offensiveRating"] } + home_team_line.sum { |player| player["defensiveRating"] }
         
                 total_rating = total_away_line_rating + total_home_line_rating
                 possession_chance = rand * total_rating
