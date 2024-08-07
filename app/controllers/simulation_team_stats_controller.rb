@@ -51,11 +51,16 @@ class SimulationTeamStatsController < ApplicationController
 
     # GET /simulation_team_stats/team_simulated_stats?simulationID=:simulationID&teamID=:teamID
     def team_simulated_stats
-        @simulation_stat = SimulationTeamStat.find_by(simulationID: params[:simulationID], teamID: params[:teamID])
+        @simulation_stat = SimulationTeamStat.joins(:team)
+            .where(simulationID: params[:simulationID], teamID: params[:teamID])
+            .select("\"simulation_team_stats\".*, \"teams\".\"fullName\"")
+            .first
+
         if @simulation_stat
             render json: {
                 simulationID: @simulation_stat.simulationID,
                 teamID: @simulation_stat.teamID,
+                fullName: @simulation_stat.fullName,
                 gamesPlayed: @simulation_stat.gamesPlayed,
                 wins: @simulation_stat.wins,
                 losses: @simulation_stat.losses,
@@ -80,14 +85,18 @@ class SimulationTeamStatsController < ApplicationController
         end
     end
 
-    # GET /simulation_team_stats/simulation_stats?simulationID=:simulationID
-    def simulation_stats
-        @simulation_stats = SimulationTeamStat.where(simulationID: params[:simulationID])
+    # GET /simulation_team_stats/simulation_all_stats?simulationID=:simulationID
+    def simulation_all_stats
+        @simulation_stats = SimulationTeamStat.joins(:team)
+            .where(simulationID: params[:simulationID])
+            .select("\"simulation_team_stats\".*, \"teams\".\"fullName\"")
+
         if @simulation_stats
             serialized_stats = @simulation_stats.map do |stat|
                 {
                     simulationID: stat.simulationID,
                     teamID: stat.teamID,
+                    fullName: stat.fullName,
                     gamesPlayed: stat.gamesPlayed,
                     wins: stat.wins,
                     losses: stat.losses,
@@ -108,9 +117,87 @@ class SimulationTeamStatsController < ApplicationController
                     isPresidents: stat.isPresidents
                 }
             end
-            render json: { simulation_team_stats: serialized_stats }
+            render json: { teamStats: serialized_stats }
         else
-            render json: { error: "Teams simulated stats not found" }, status: :not_found
+            render json: { error: "League simulated stats not found" }, status: :not_found
+        end
+    end
+
+    # GET /simulation_team_stats/simulation_conference_stats?simulationID=:simulationID&conference=:conference
+    def simulation_conference_stats
+        @simulation_stats = SimulationTeamStat.joins(:team)
+            .where(simulationID: params[:simulationID])
+            .where("LOWER(\"teams\".\"conference\") IN (?)", params[:conference].map(&:downcase))
+            .select("\"simulation_team_stats\".*, \"teams\".\"fullName\"")
+
+        if @simulation_stats
+            serialized_stats = @simulation_stats.map do |stat|
+                {
+                    simulationID: stat.simulationID,
+                    teamID: stat.teamID,
+                    fullName: stat.fullName,
+                    gamesPlayed: stat.gamesPlayed,
+                    wins: stat.wins,
+                    losses: stat.losses,
+                    otLosses: stat.otLosses,
+                    points: stat.points,
+                    goalsFor: stat.goalsFor,
+                    goalsForPerGame: stat.goalsForPerGame.to_f,
+                    goalsAgainst: stat.goalsAgainst,
+                    goalsAgainstPerGame: stat.goalsAgainstPerGame.to_f,
+                    totalPowerPlays: stat.totalPowerPlays,
+                    powerPlayPctg: stat.powerPlayPctg.to_f,
+                    totalPenaltyKills: stat.totalPenaltyKills,
+                    penaltyKillPctg: stat.penaltyKillPctg.to_f,
+                    divisionRank: stat.divisionRank,
+                    conferenceRank: stat.conferenceRank,
+                    leagueRank: stat.leagueRank,
+                    isWildCard: stat.isWildCard,
+                    isPresidents: stat.isPresidents
+                }
+            end
+            render json: { teamStats: serialized_stats }
+        else
+            render json: { error: "Conference simulated stats not found" }, status: :not_found
+        end
+    end
+
+    # GET /simulation_team_stats/simulation_division_stats?simulationID=:simulationID&division=:division
+    def simulation_division_stats
+        @simulation_stats = SimulationTeamStat.joins(:team)
+        .where(simulationID: params[:simulationID])
+        .where("LOWER(\"teams\".\"division\") IN (?)", params[:division].map(&:downcase))
+        .select("\"simulation_team_stats\".*, \"teams\".\"fullName\"")
+
+        if @simulation_stats
+            serialized_stats = @simulation_stats.map do |stat|
+                {
+                    simulationID: stat.simulationID,
+                    teamID: stat.teamID,
+                    fullName: stat.fullName,
+                    gamesPlayed: stat.gamesPlayed,
+                    wins: stat.wins,
+                    losses: stat.losses,
+                    otLosses: stat.otLosses,
+                    points: stat.points,
+                    goalsFor: stat.goalsFor,
+                    goalsForPerGame: stat.goalsForPerGame.to_f,
+                    goalsAgainst: stat.goalsAgainst,
+                    goalsAgainstPerGame: stat.goalsAgainstPerGame.to_f,
+                    totalPowerPlays: stat.totalPowerPlays,
+                    powerPlayPctg: stat.powerPlayPctg.to_f,
+                    totalPenaltyKills: stat.totalPenaltyKills,
+                    penaltyKillPctg: stat.penaltyKillPctg.to_f,
+                    divisionRank: stat.divisionRank,
+                    conferenceRank: stat.conferenceRank,
+                    leagueRank: stat.leagueRank,
+                    isWildCard: stat.isWildCard,
+                    isPresidents: stat.isPresidents
+                }
+            end
+            render json: { teamStats: serialized_stats }
+        else
+            render json: { error: "Division simulated stats not found" }, status: :not_found
         end
     end
 end

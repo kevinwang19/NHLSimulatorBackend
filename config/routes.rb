@@ -52,7 +52,9 @@ Rails.application.routes.draw do
   
     # Routes for simulation team stats
     get "simulation_team_stats/team_simulated_stats", to: "simulation_team_stats#team_simulated_stats", as: "team_simulated_stats"
-    get "simulation_team_stats/simulation_stats", to: "simulation_team_stats#simulation_stats", as: "all_teams_simulated_stats"
+    get "simulation_team_stats/simulation_all_stats", to: "simulation_team_stats#simulation_all_stats", as: "all_teams_simulated_stats"
+    get "simulation_team_stats/simulation_conference_stats", to: "simulation_team_stats#simulation_conference_stats", as: "conference_teams_simulated_stats"
+    get "simulation_team_stats/simulation_division_stats", to: "simulation_team_stats#simulation_division_stats", as: "division_teams_simulated_stats"
 
     # Routes for simulation game stats
     get "simulation_game_stats/team_simulated_game_stats", to: "simulation_game_stats#team_simulated_game_stats", as: "team_simulated_game_stats"

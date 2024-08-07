@@ -9,8 +9,8 @@ module Sim
                 # Get the team special teams stats
                 new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
-                # Get the team ranks and standings info
-                is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
+                # Update team ranks and standings info
+                update_team_standing_stats(simulation_id)
 
                 # Update winning team stats since the record exists from the initial games played addition/update
                 team_stat.update(
@@ -24,9 +24,7 @@ module Sim
                     totalPowerPlays: new_total_pps,
                     powerPlayPctg: new_pp_pctg,
                     totalPenaltyKills: new_total_pks,
-                    penaltyKillPctg: new_pk_pctg,
-                    isWildCard: is_wildcard,
-                    isPresidents: is_presidents
+                    penaltyKillPctg: new_pk_pctg
                 )
             end
         end
@@ -40,8 +38,8 @@ module Sim
                 # Get the team special teams stats
                 new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
-                # Get the team ranks and standings stats
-                is_wildcard, is_presidents = get_team_standing_stats(simulation_id, team_id)
+                # Update team ranks and standings info
+                update_team_standing_stats(simulation_id)
 
                 # Update winning team stats since the record exists from the initial games played addition/update
                 team_stat.update(
@@ -56,9 +54,7 @@ module Sim
                     totalPowerPlays: new_total_pps,
                     powerPlayPctg: new_pp_pctg,
                     totalPenaltyKills: new_total_pks,
-                    penaltyKillPctg: new_pk_pctg,
-                    isWildCard: is_wildcard,
-                    isPresidents: is_presidents
+                    penaltyKillPctg: new_pk_pctg
                 )
             end
         end
@@ -83,67 +79,83 @@ module Sim
         end
 
         # Get the division, conference, and league standing stats of the team
-        def get_team_standing_stats(simulation_id, team_id)
-            # Get the division and conference of the current team
-            division = Team.find_by(teamID: team_id).division
-            conference = Team.find_by(teamID: team_id).conference
+        def update_team_standing_stats(simulation_id)
+            # Get all unique divisions and conferences
+            divisions = Team.distinct.pluck(:division)
+            conferences = Team.distinct.pluck(:conference)
 
-            # Get all the team IDs from the current division and all the teams from the current conference
-            division_team_ids = Team.where(division: division).pluck(:teamID)
-            conference_team_ids = Team.where(conference: conference).pluck(:teamID)
+            # Update division rankings
+            divisions.each do |division|
+                division_team_ids = Team.where(division: division).pluck(:teamID)
+                sorted_division_standings = sort_and_rank_teams(simulation_id, division_team_ids)
+    
+                sorted_division_standings.each_with_index do |division_team, index|
+                    division_team.update(divisionRank: index + 1)
+                end
+            end
 
-            # Get the simulation team stats from the current division, conference, and league matching the team IDs
-            division_team_stats = SimulationTeamStat.where(simulationID: simulation_id, teamID: division_team_ids)
-            conference_team_stats = SimulationTeamStat.where(simulationID: simulation_id, teamID: conference_team_ids)
+            # Update conference rankings
+            wildcard_team_ids = []
+            conferences.each do |conference|
+                conference_team_ids = Team.where(conference: conference).pluck(:teamID)
+                sorted_conference_standings = sort_and_rank_teams(simulation_id, conference_team_ids)
+        
+                sorted_conference_standings.each_with_index do |conference_team, index|
+                    conference_team.update(conferenceRank: index + 1)
+                end
+
+                # Find wildcard teams for the conference
+                wildcard_team_ids += find_wildcard_teams(simulation_id, conference)
+            end
+
+            # Update league rankings
             league_team_stats = SimulationTeamStat.where(simulationID: simulation_id)
+            sorted_league_standings = sort_and_rank_teams(simulation_id, league_team_stats.pluck(:teamID))
 
-            # Sort the division, conference, and league based on points (descending), then by games played (ascending), then by wins (descending)
-            sorted_division_standings = division_team_stats.sort_by do |division_team|
+            sorted_league_standings.each_with_index do |team, index|
+                is_wildcard = wildcard_team_ids.include?(team.teamID)
+                is_presidents = (index + 1 == 1)
+                
+                team.update(leagueRank: index + 1, isWildCard: is_wildcard, isPresidents: is_presidents)
+            end
+        end
+
+        # Sort and rank teams
+        def sort_and_rank_teams(simulation_id, team_ids)
+            team_stats = SimulationTeamStat.where(simulationID: simulation_id, teamID: team_ids)
+
+            sorted_standings = team_stats.sort_by do |team|
                 [
-                -division_team[:points],
-                division_team[:gamesPlayed],
-                -division_team[:wins],
+                    -team[:points],
+                    team[:gamesPlayed],
+                    -team[:wins],
                 ]
             end
 
-            sorted_conference_standings = conference_team_stats.sort_by do |conference_team|
-                [
-                -conference_team[:points],
-                conference_team[:gamesPlayed],
-                -conference_team[:wins],
-                ]
+            return sorted_standings
+        end
+
+        # Find wildcard teams for a conference
+        def find_wildcard_teams(simulation_id, conference)
+            wildcard_team_ids = []
+            division_team_ids = {}
+
+            # Get team IDs for each division in the conference
+            Team.where(conference: conference).pluck(:division).uniq.each do |division|
+                division_team_ids[division] = Team.where(division: division).pluck(:teamID)
             end
 
-            sorted_league_standings = league_team_stats.sort_by do |league_team|
-                [
-                -league_team[:points],
-                league_team[:gamesPlayed],
-                -league_team[:wins],
-                ]
+            # Get top 3 teams from each division
+            top_teams_in_divisions = division_team_ids.flat_map do |division, team_ids|
+                sort_and_rank_teams(simulation_id, team_ids).first(3).map(&:teamID)
             end
 
-            sorted_division_standings.each_with_index do |division_team, index|
-                division_team.update(divisionRank: index + 1)
-            end
+            # Sort remaining teams and get top 2 as wildcard teams
+            remaining_team_ids = Team.where(conference: conference).pluck(:teamID) - top_teams_in_divisions
+            sorted_remaining_teams = sort_and_rank_teams(simulation_id, remaining_team_ids)
+            wildcard_team_ids = sorted_remaining_teams.first(2).map(&:teamID)
 
-            sorted_conference_standings.each_with_index do |conference_team, index|
-                conference_team.update(conferenceRank: index + 1)
-            end
-
-            sorted_league_standings.each_with_index do |league_team, index|
-                league_team.update(leagueRank: index + 1)
-            end
-
-            # See if the current team is a wilcard team based on if its 4th or 5th in division standings and from 4th-8th in conference standings
-            potential_division_wildcard_team_ids = sorted_division_standings[3..4].map { |team| team.teamID }
-            potential_conference_wildcard_team_ids = sorted_conference_standings[3..7].map { |team| team.teamID }
-            is_wildcard = potential_division_wildcard_team_ids.include?(team_id) && potential_conference_wildcard_team_ids.include?(team_id)
-            
-            # See if the team is in first in the league
-            league_rank = sorted_league_standings.find_index { |team| team.teamID == team_id }
-            is_presidents = (league_rank == 1)
-
-            return [is_wildcard, is_presidents]
+            return wildcard_team_ids
         end
     end
 end

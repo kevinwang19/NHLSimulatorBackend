@@ -35,7 +35,7 @@ class SimulationSkaterStatsController < ApplicationController
 
     # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID
     def simulation_team_stats
-        if params[:teamID] == 0
+        if params[:teamID].to_i == 0
             @simulation_stats = SimulationSkaterStat.joins(:player)
                 .where(simulationID: params[:simulationID])
                 .where("\"gamesPlayed\" > 0")
@@ -57,7 +57,7 @@ class SimulationSkaterStatsController < ApplicationController
 
     # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID&postion=:position
     def simulation_team_position_stats
-        if params[:teamID] == 0
+        if params[:teamID].to_i == 0
             @simulation_stats = SimulationSkaterStat.joins(:player)
                 .where(simulationID: params[:simulationID])
                 .where("\"gamesPlayed\" > 0")
