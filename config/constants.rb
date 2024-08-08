@@ -1,5 +1,9 @@
 # Date constants
 SEPTEMBER_MONTH = 9
+OCTOBER_MONTH = 10
+APRIL_MONTH = 4
+MONTH_1ST = 1
+MONTH_30TH = 30
 TWO_WEEKS_NUM_DAYS = 14
 
 # Game information constants

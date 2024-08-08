@@ -14,11 +14,11 @@ namespace :app do
 
         # If the current month is before September, fetch everything for the season that just passed, otherwise fetch the next season
         if current_date.month < SEPTEMBER_MONTH
-            start_date = Date.new((current_date.year - 1).to_i, 10, 1)
-            end_date = Date.new((current_date.year).to_i, 4, 30)
+            start_date = Date.new((current_date.year - 1).to_i, OCTOBER_MONTH, MONTH_1ST)
+            end_date = Date.new((current_date.year).to_i, APRIL_MONTH, MONTH_30TH)
         else
-            start_date = Date.new((current_date.year).to_i, 10, 1)
-            end_date = Date.new((current_date.year + 1).to_i, 4, 30)
+            start_date = Date.new((current_date.year).to_i, OCTOBER_MONTH, MONTH_1ST)
+            end_date = Date.new((current_date.year + 1).to_i, APRIL_MONTH, MONTH_30TH)
         end
 
         fetch_schedule(start_date, end_date)

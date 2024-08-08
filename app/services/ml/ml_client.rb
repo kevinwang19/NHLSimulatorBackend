@@ -1,4 +1,4 @@
-require_relative "../../config/constants"
+require_relative "../../../config/constants"
 require "open3"
 
 class MlClient

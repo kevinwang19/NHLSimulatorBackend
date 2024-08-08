@@ -5,29 +5,22 @@ Rails.application.routes.draw do
 
     # Routes for teams
     get "teams", to: "teams#index", as: "all_teams"
+    get "teams/team", to: "teams#team", as: "team"
 
     # Routes for players
     get "players", to: "players#index", as: "all_players"
 
     # Routes for skater stats
-    get "skater_stats", to: "skater_stats#index", as: "all_skater_stats"
-    get "skater_stats/:statID", to: "skater_stats#show", as: "skater_stat"
-    get "skater_stats/skater_season_stats/:playerID/:season", to: "skater_stats#skater_season_stats", as: "skater_season_stats"
-    get "skater_stats/skater_career_stats/:playerID", to: "skater_stats#skater_career_stats", as: "skater_career_stats"
+    get "skater_stats/skater_career_stats", to: "skater_stats#skater_career_stats", as: "skater_career_stats"
 
     # Routes for goalie stats
-    get "goalie_stats", to: "goalie_stats#index", as: "all_goalie_stats"
-    get "goalie_stats/:statID", to: "goalie_stats#show", as: "goalie_stat"
-    get "goalie_stats/goalie_season_stats/:playerID/:season", to: "goalie_stats#goalie_season_stats", as: "goalie_season_stats"
-    get "goalie_stats/goalie_career_stats/:playerID", to: "goalie_stats#goalie_career_stats", as: "goalie_career_stats"
+    get "goalie_stats/goalie_career_stats", to: "goalie_stats#goalie_career_stats", as: "goalie_career_stats"
 
     # Routes for skater stats predictions
-    get "skater_stats_predictions", to: "skater_stats_predictions#index", as: "all_skater_stats_predictions"
-    get "skater_stats_predictions/:playerID", to: "skater_stats_predictions#show", as: "skater_stat_prediction"
+    get "skater_stats_predictions/skater_predicted_stats", to: "skater_stats_predictions#skater_predicted_stats", as: "skater_predicted_stats"
 
     # Routes for goalie stats predictions
-    get "goalie_stats_predictions", to: "goalie_stats_predictions#index", as: "all_goalie_stats_predictions"
-    get "goalie_stats_predictions/:playerID", to: "goalie_stats_predictions#show", as: "goalie_stat_prediction"
+    get "goalie_stats_predictions/goalie_predicted_stats", to: "goalie_stats_predictions#goalie_predicted_stats", as: "goalie_predicted_stats"
 
     # Routes for lineups
     get "lineups", to: "lineups#index", as: "all_lineups"

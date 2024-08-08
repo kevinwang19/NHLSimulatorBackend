@@ -33,7 +33,7 @@ class SimulationSkaterStatsController < ApplicationController
         end
     end
 
-    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID
+    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&playerIDs=:playerIDs&teamID=:teamID
     def simulation_team_stats
         if params[:teamID].to_i == 0
             @simulation_stats = SimulationSkaterStat.joins(:player)
@@ -41,9 +41,8 @@ class SimulationSkaterStatsController < ApplicationController
                 .where("\"gamesPlayed\" > 0")
                 .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
         else
-            player_ids = Player.where(teamID: params[:teamID]).pluck(:playerID)
             @simulation_stats = SimulationSkaterStat.joins(:player)
-                .where(simulationID: params[:simulationID], playerID: player_ids)
+                .where(simulationID: params[:simulationID], playerID: params[:playerIDs])
                 .where("\"gamesPlayed\" > 0")
                 .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
         end
@@ -55,7 +54,7 @@ class SimulationSkaterStatsController < ApplicationController
         end
     end
 
-    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&teamID=:teamID&postion=:position
+    # GET /simulation_skater_stats/simulation_team_stats?simulationID=:simulationID&playerIDs=:playerIDs&teamID=:teamID&postion=:position
     def simulation_team_position_stats
         if params[:teamID].to_i == 0
             @simulation_stats = SimulationSkaterStat.joins(:player)
@@ -64,9 +63,8 @@ class SimulationSkaterStatsController < ApplicationController
                 .where(players: { positionCode: params[:position] })
                 .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
         else
-            player_ids = Player.where(teamID: params[:teamID]).pluck(:playerID)
             @simulation_stats = SimulationSkaterStat.joins(:player)
-                .where(simulationID: params[:simulationID], playerID: player_ids)
+                .where(simulationID: params[:simulationID], playerID: params[:playerIDs])
                 .where("\"gamesPlayed\" > 0")
                 .where(players: { positionCode: params[:position] })
                 .select("\"simulation_skater_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
