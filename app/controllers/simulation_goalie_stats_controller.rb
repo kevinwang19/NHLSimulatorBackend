@@ -22,28 +22,15 @@ class SimulationGoalieStatsController < ApplicationController
         errors
     end
 
-    # GET /simulation_goalie_stats/simulation_individual_stat?simulationID=:simulationID&playerID=:playerID
-    def simulation_individual_stat
-        @simulation_stat = SimulationGoalieStat.find_by(simulationID: params[:simulationID], playerID: params[:playerID])
-        
-        if @simulation_stat
-            render json: { goalieStats: @simulation_stat }
-        else
-            render json: { error: "Goalie simulated stats not found" }, status: :not_found
-        end
-    end
-
     # GET /simulation_goalie_stats/simulation_team_stats?simulationID=:simulationID&playerIDs=:playerIDs&teamID=:teamID
     def simulation_team_stats
         if params[:teamID].to_i == 0
             @simulation_stats = SimulationGoalieStat.joins(:player)
                 .where(simulationID: params[:simulationID])
-                .where("\"gamesPlayed\" > 0")
                 .select("\"simulation_goalie_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
         else
             @simulation_stats = SimulationGoalieStat.joins(:player)
                 .where(simulationID: params[:simulationID], playerID: params[:playerIDs])
-                .where("\"gamesPlayed\" > 0")
                 .select("\"simulation_goalie_stats\".*, CONCAT(\"players\".\"firstName\", ' ', \"players\".\"lastName\") AS \"fullName\"")
         end
 

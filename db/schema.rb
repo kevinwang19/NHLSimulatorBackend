@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_28_005840) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_14_033601) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -79,6 +79,24 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_005840) do
     t.index ["playerID"], name: "index_players_on_playerID", unique: true
   end
 
+  create_table "playoff_schedules", primary_key: "playoffScheduleID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.string "date", null: false
+    t.integer "awayTeamID", null: false
+    t.string "awayTeamAbbrev", null: false
+    t.string "awayTeamLogo", null: false
+    t.integer "awayTeamScore"
+    t.integer "homeTeamID", null: false
+    t.string "homeTeamAbbrev", null: false
+    t.string "homeTeamLogo", null: false
+    t.integer "homeTeamScore"
+    t.integer "roundNumber", null: false
+    t.string "conference", null: false
+    t.integer "matchupNumber", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "schedules", primary_key: "scheduleID", id: :bigint, default: -> { "nextval('schedules_id_seq'::regclass)" }, force: :cascade do |t|
     t.string "date", null: false
     t.string "dayAbbrev", null: false
@@ -114,6 +132,51 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_005840) do
     t.integer "otLosses", default: 0, null: false
     t.float "goalsAgainstPerGame", default: 0.0, null: false
     t.integer "shutouts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_playoff_goalie_stats", primary_key: "simulationPlayoffGoalieStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "playerID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "wins", default: 0, null: false
+    t.integer "losses", default: 0, null: false
+    t.integer "otLosses", default: 0, null: false
+    t.float "goalsAgainstPerGame", default: 0.0, null: false
+    t.integer "shutouts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_playoff_skater_stats", primary_key: "simulationPlayoffSkaterStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "playerID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "goals", default: 0, null: false
+    t.integer "assists", default: 0, null: false
+    t.integer "points", default: 0, null: false
+    t.integer "powerPlayGoals", default: 0, null: false
+    t.integer "powerPlayPoints", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "simulation_playoff_team_stats", primary_key: "simulationPlayoffTeamStatID", force: :cascade do |t|
+    t.integer "simulationID", null: false
+    t.integer "teamID", null: false
+    t.integer "gamesPlayed", default: 0, null: false
+    t.integer "wins", default: 0, null: false
+    t.integer "losses", default: 0, null: false
+    t.integer "otLosses", default: 0, null: false
+    t.integer "goalsFor", default: 0, null: false
+    t.float "goalsForPerGame", default: 0.0, null: false
+    t.integer "goalsAgainst", default: 0, null: false
+    t.float "goalsAgainstPerGame", default: 0.0, null: false
+    t.integer "totalPowerPlays", default: 0, null: false
+    t.float "powerPlayPctg", default: 0.0, null: false
+    t.integer "totalPenaltyKills", default: 0, null: false
+    t.float "penaltyKillPctg", default: 0.0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
@@ -235,10 +298,19 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_005840) do
   add_foreign_key "lineups", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "lineups", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "players", "teams", column: "teamID", primary_key: "teamID"
+  add_foreign_key "playoff_schedules", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "playoff_schedules", "teams", column: "awayTeamID", primary_key: "teamID"
+  add_foreign_key "playoff_schedules", "teams", column: "homeTeamID", primary_key: "teamID"
   add_foreign_key "simulation_game_stats", "schedules", column: "scheduleID", primary_key: "scheduleID"
   add_foreign_key "simulation_game_stats", "simulations", column: "simulationID", primary_key: "simulationID"
   add_foreign_key "simulation_goalie_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "simulation_goalie_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_playoff_goalie_stats", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "simulation_playoff_goalie_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_playoff_skater_stats", "players", column: "playerID", primary_key: "playerID"
+  add_foreign_key "simulation_playoff_skater_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_playoff_team_stats", "simulations", column: "simulationID", primary_key: "simulationID"
+  add_foreign_key "simulation_playoff_team_stats", "teams", column: "teamID", primary_key: "teamID"
   add_foreign_key "simulation_skater_stats", "players", column: "playerID", primary_key: "playerID"
   add_foreign_key "simulation_skater_stats", "simulations", column: "simulationID", primary_key: "simulationID"
   add_foreign_key "simulation_team_stats", "simulations", column: "simulationID", primary_key: "simulationID"

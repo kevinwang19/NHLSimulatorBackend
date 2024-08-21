@@ -40,10 +40,11 @@ module Sim
             is_home_team_penalty = false
             penalty_min = 0
             required_ot = false
+            is_playoffs = false
 
             # Get the list of goalies from both teams
-            away_team_goalies = away_team_lineup.select { |player| player["position"] == "G" }
-            home_team_goalies = home_team_lineup.select { |player| player["position"] == "G" }
+            away_team_goalies = away_team_lineup.select { |player| player["position"] == "G" && !player["lineNumber"].nil? && !player["lineNumber"].zero? }
+            home_team_goalies = home_team_lineup.select { |player| player["position"] == "G" && !player["lineNumber"].nil? && !player["lineNumber"].zero? }
 
             # Get the starting goalies of both teams
             away_team_goalie = starting_goalie(away_team_goalies)
@@ -55,9 +56,8 @@ module Sim
             all_players_playing = away_players_playing + home_players_playing
 
             # Record new player games played stats
-            @simulation_player_stats.save_simulation_player_stats_initial(@simulation_info.simulationID, all_players_playing)
+            @simulation_player_stats.save_simulation_player_stats_initial(@simulation_info.simulationID, all_players_playing, is_playoffs)
 
-            test = Schedule.maximum(:season)
             # Simulate through 3 periods
             for period in 1..NUM_PERIODS
                 # Simulate through each minute of the period
@@ -136,7 +136,7 @@ module Sim
                                     away_team_pp_goals += is_home_team_penalty ? 1 : 0
 
                                     # Record skater stats from the goal
-                                    @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_line, is_home_team_penalty)
+                                    @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_line, is_home_team_penalty, is_playoffs)
 
                                     # Return teams back to even strength
                                     penalty_min = 0
@@ -154,7 +154,7 @@ module Sim
                                     home_team_pp_goals += is_away_team_penalty ? 1 : 0
 
                                     # Record skater stats from the goal
-                                    @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_line, is_away_team_penalty)
+                                    @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_line, is_away_team_penalty, is_playoffs)
 
                                     # Return teams back to even strength
                                     penalty_min = 0
@@ -197,7 +197,7 @@ module Sim
                                 away_team_score += 1
 
                                 # Record skater stats from the goal
-                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_line, false)
+                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, away_team_ot_line, is_home_team_penalty, is_playoffs)
 
                                 # End simulation if a goal is scored
                                 break
@@ -209,7 +209,7 @@ module Sim
                                 home_team_score += 1
                                 
                                 # Record skater stats from the goal
-                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_line, false)
+                                @simulation_player_stats.simulate_skater_stats(@simulation_info.simulationID, home_team_ot_line, is_away_team_penalty, is_playoffs)
                                 
                                 # End simulation if a goal is scored
                                 break
@@ -257,11 +257,11 @@ module Sim
                 winning_goalie = home_team_goalie
                 losing_goalie = away_team_goalie
             end
-
+            
             # Record goalie stats from the game
-            @simulation_player_stats.save_simulation_goalie_stats_win(@simulation_info.simulationID, winning_goalie, losing_team_score)
-            @simulation_player_stats.save_simulation_goalie_stats_loss(@simulation_info.simulationID, losing_goalie, winning_team_score, required_ot)
-
+            @simulation_player_stats.save_simulation_goalie_stats_win(@simulation_info.simulationID, winning_goalie, losing_team_score, is_playoffs)
+            @simulation_player_stats.save_simulation_goalie_stats_loss(@simulation_info.simulationID, losing_goalie, winning_team_score, required_ot, is_playoffs)
+            
             # Record game stats
             @simulation_game_stats.save_game_stats(
                 @simulation_info.simulationID, 
@@ -281,7 +281,8 @@ module Sim
                 winning_team_pp_goals,
                 losing_team_penalties,
                 losing_team_pp_goals,
-                winning_team_penalties
+                winning_team_penalties,
+                is_playoffs
             )
             @simulation_team_stats.save_team_stats_loss(
                 @simulation_info.simulationID,
@@ -292,16 +293,17 @@ module Sim
                 winning_team_penalties,
                 winning_team_pp_goals,
                 losing_team_penalties,
-                required_ot
+                required_ot,
+                is_playoffs
             )
         end
 
         # Starting goalie of the team based on goalie ratings
         def starting_goalie(goalies)
-            if goalies[1]
+            if goalies.length >= 2
                 # Get the goalie ratings
-                goalie1_rating = goalies[0]["defensiveRating"]
-                goalie2_rating =  goalies[1]["defensiveRating"]
+                goalie1_rating = goalies[0]["defensiveRating"] * 100
+                goalie2_rating =  goalies[1]["defensiveRating"] * 100
 
                 # Randomize which goalie starts based on the ratio of the ratings
                 total_goalie_ratings = goalie1_rating + goalie2_rating
@@ -336,7 +338,7 @@ module Sim
 
         # Whether or not a penalty was called
         def is_penalty
-            # 15% chance of a penalty for either team
+            # 13% chance of a penalty for either team
             return rand < PENALTY_CHANCE_PERCENTAGE
         end
 
@@ -344,9 +346,9 @@ module Sim
         def line_number_on_ice(is_forward_line, even_strength)
             # Assign the line numbers and probabilities of each line being on the ice based on if it is forwards or defensemen and even stength or special teams
             even_strength_line_numbers = is_forward_line ? [1, 2, 3, 4] : [1, 2, 3]
-            even_strength_line_number_probabilities = is_forward_line ? [0.4, 0.3, 0.2, 0.1] : [0.5, 0.3, 0.2]
+            even_strength_line_number_probabilities = is_forward_line ? [0.35, 0.3, 0.2, 0.15] : [0.4, 0.35, 0.25]
             special_teams_line_numbers = [1, 2]
-            special_teams_line_number_probabilities = [0.6, 0.4]
+            special_teams_line_number_probabilities = [0.65, 0.35]
 
             random_probability = rand
             cumulative_probability = 0.0
@@ -374,8 +376,8 @@ module Sim
         # Offensive or defensive rating sum of the entire line
         def determine_team_ratings(team_line, team_goalie)
             # Sum up the offensive and defensive ratings
-            total_offensive_rating = team_line.sum { |player| player["offensiveRating"] }
-            total_defensive_rating = team_line.sum { |player| player["defensiveRating"] } + team_goalie["defensiveRating"]
+            total_offensive_rating = team_line.sum { |player| player["offensiveRating"] * 100 }
+            total_defensive_rating = team_line.sum { |player| player["defensiveRating"] * 100 } + team_goalie["defensiveRating"] * 100
         
             return [total_offensive_rating, total_defensive_rating]
         end
@@ -390,8 +392,8 @@ module Sim
                 return AWAY
             # If even strength, sum up the offensive and defensive ratings of all line players and use it to randomize which line has possession
             else
-                total_away_line_rating = away_team_line.sum { |player| player["offensiveRating"] } + away_team_line.sum { |player| player["defensiveRating"] }
-                total_home_line_rating = home_team_line.sum { |player| player["offensiveRating"] } + home_team_line.sum { |player| player["defensiveRating"] }
+                total_away_line_rating = away_team_line.sum { |player| player["offensiveRating"] * 100 } + away_team_line.sum { |player| player["defensiveRating"] * 100 }
+                total_home_line_rating = home_team_line.sum { |player| player["offensiveRating"] * 100 } + home_team_line.sum { |player| player["defensiveRating"] * 100 }
         
                 total_rating = total_away_line_rating + total_home_line_rating
                 possession_chance = rand * total_rating

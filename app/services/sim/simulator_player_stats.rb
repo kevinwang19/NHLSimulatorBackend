@@ -1,15 +1,17 @@
+require_relative "../../../config/constants"
+
 module Sim
     class SimulatorPlayerStats
-        def simulate_skater_stats(simulation_id, team_line, is_powerplay)
+        def simulate_skater_stats(simulation_id, team_line, is_powerplay, is_playoffs)
             # Determine who scored the goal and got the assists
             scoring_log = determine_scoring_log(team_line)
 
             # Save stats to database, first element is a goal, other elements are assists
             scoring_log.each_with_index do |skater, index|
                 if index == 0
-                    save_simulation_skater_stats_goal(simulation_id, skater, is_powerplay)
+                    save_simulation_skater_stats_goal(simulation_id, skater, is_powerplay, is_playoffs)
                 else
-                    save_simulation_skater_stats_assist(simulation_id, skater, is_powerplay)
+                    save_simulation_skater_stats_assist(simulation_id, skater, is_powerplay, is_playoffs)
                 end
             end
         end
@@ -22,14 +24,14 @@ module Sim
             # Get the first player to receive a point on the goal
             point_getter1 = select_point_getter(line)
 
-            # 5% chance the goal was unassisted
+            # 10% chance the goal was unassisted
             if rand < UNASSITED_GOAL_PERCENTAGE
                 goal_scorer = point_getter1
             else
                 # Get the second player to receive a point on the goal
                 point_getter2 = select_point_getter(line - [point_getter1])
                 
-                # 30% chance the goal only has 1 assist
+                # 40% chance the goal only has 1 assist
                 if rand < SINGLE_ASSISTED_GOAL_PERCENTAGE
                     # Find out which player scored the goal and which player assisted the goal
                     point_getters = [point_getter1, point_getter2]
@@ -53,8 +55,8 @@ module Sim
         # Selecting a player from the line to get the point based on offensive ratings
         def select_point_getter(players)
             # Normalize the ratings to have ratings show a greater effect on the point getters
-            total_rating = players.sum { |player| player["offensiveRating"]**2 }
-            normalized_ratings = players.map { |player| (player["offensiveRating"]**2).to_f / total_rating.to_f }
+            total_rating = players.sum { |player| player["offensiveRating"] * 100 }
+            normalized_ratings = players.map { |player| (player["offensiveRating"] * 100).to_f / total_rating.to_f }
         
             selection_point = rand
             cumulative_rating = 0.0
@@ -74,7 +76,7 @@ module Sim
 
             # Get the goal to point ratios of the players predicted stat to see who is more likely to score
             total_goal_to_point_ratios = predicted_stats.sum { |stat| stat.goals.to_f / (stat.points || 1) }
-            goal_to_point_ratios = predicted_stats.map { |stat| (stat.goals.to_f / (stat.points || 1)) / total_goal_to_point_ratios }
+            goal_to_point_ratios = predicted_stats.map { |stat| (stat.goals.to_f / (stat.points || 1)) / (total_goal_to_point_ratios || 1) }
         
             selection_point = rand
             cumulative_ratio = 0.0
@@ -95,99 +97,181 @@ module Sim
         end
 
         # Save new games played simulated player stats to database
-        def save_simulation_player_stats_initial(simulation_id, players)
+        def save_simulation_player_stats_initial(simulation_id, players, is_playoffs)
             # Get each player that is playing
             players.each do |player|
-                # Save goalie stats to SimulationGoalieStat and skater stats to SimulationSkaterStat
+                # Save goalie stats
                 if player["position"] == "G"
-                    # Find the current simulation goalie stats from the database
-                    goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
-
-                    # Update games played stat since the record exists from the simulation initiation
-                    if goalie_stat
-                        goalie_stat.update(gamesPlayed: goalie_stat.gamesPlayed + 1)
+                    # Find the current simulation goalie stats from the database based on whether or not it is playoffs
+                    if is_playoffs 
+                        goalie_playoff_stat = SimulationPlayoffGoalieStat.find_by(simulationID: simulation_id, playerID: player["playerID"]) 
+                        
+                        # Update games played stat since the record exists from the playoff initiation
+                        if goalie_playoff_stat
+                            goalie_playoff_stat.update(gamesPlayed: goalie_playoff_stat.gamesPlayed + 1)
+                        end
+                    else
+                        goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
+                        
+                        # Update games played stat since the record exists from the simulation initiation
+                        if goalie_stat
+                            goalie_stat.update(gamesPlayed: goalie_stat.gamesPlayed + 1)
+                        end
                     end
                 else
-                    # Find the current simulation skater stats from the database
-                    skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
-
-                    # Update games played stat since the record exists from the simulation initiation
-                    if skater_stat
-                        skater_stat.update(gamesPlayed: skater_stat.gamesPlayed + 1)
+                    # Find the current simulation skater stats from the database based on whether or not it is playoffs
+                    if is_playoffs
+                        skater_playoff_stat = SimulationPlayoffSkaterStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
+                        
+                        # Update games played stat since the record exists from the playoff initiation
+                        if skater_playoff_stat
+                            skater_playoff_stat.update(gamesPlayed: skater_playoff_stat.gamesPlayed + 1)
+                        end
+                    else
+                        skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: player["playerID"])
+                        
+                        # Update games played stat since the record exists from the simulation initiation
+                        if skater_stat
+                            skater_stat.update(gamesPlayed: skater_stat.gamesPlayed + 1)
+                        end
                     end
                 end
             end
         end
 
-        # Save goal scorer simulated stats to SimulationSkaterStats database
-        def save_simulation_skater_stats_goal(simulation_id, skater, is_powerplay)
-            # Find the current simulation skater stats from the database
-            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
+        # Save goal scorer simulated stats to database
+        def save_simulation_skater_stats_goal(simulation_id, skater, is_powerplay, is_playoffs)
+            # Find the current simulation skater stats from the database based on whether or not it is playoffs
+            if is_playoffs 
+                skater_playoff_stat = SimulationPlayoffSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
 
-            # Update goal stats since the record exists from the simulation initiation
-            if skater_stat
-                skater_stat.update(
-                    goals: skater_stat.goals + 1,
-                    points: skater_stat.points + 1,
-                    powerPlayGoals: is_powerplay ? skater_stat.powerPlayGoals + 1 : skater_stat.powerPlayGoals,
-                    powerPlayPoints: is_powerplay ? skater_stat.powerPlayPoints + 1 : skater_stat.powerPlayPoints
-                )
+                # Update goal stats since the record exists from the playoff initiation
+                if skater_playoff_stat
+                    skater_playoff_stat.update(
+                        goals: skater_playoff_stat.goals + 1,
+                        points: skater_playoff_stat.points + 1,
+                        powerPlayGoals: is_powerplay ? skater_playoff_stat.powerPlayGoals + 1 : skater_playoff_stat.powerPlayGoals,
+                        powerPlayPoints: is_powerplay ? skater_playoff_stat.powerPlayPoints + 1 : skater_playoff_stat.powerPlayPoints
+                    )
+                end
+            else
+                skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
+
+                # Update goal stats since the record exists from the simulation initiation
+                if skater_stat
+                    skater_stat.update(
+                        goals: skater_stat.goals + 1,
+                        points: skater_stat.points + 1,
+                        powerPlayGoals: is_powerplay ? skater_stat.powerPlayGoals + 1 : skater_stat.powerPlayGoals,
+                        powerPlayPoints: is_powerplay ? skater_stat.powerPlayPoints + 1 : skater_stat.powerPlayPoints
+                    )
+                end
             end
         end
 
-        # Save assist simulated stats to SimulationSkaterStats database
-        def save_simulation_skater_stats_assist(simulation_id, skater, is_powerplay)
-            # Find the current simulation skater stats from the database
-            skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
+        # Save assist simulated stats to database
+        def save_simulation_skater_stats_assist(simulation_id, skater, is_powerplay, is_playoffs)
+            # Find the current simulation skater stats from the database based on whether or not it is playoffs
+            if is_playoffs 
+                skater_playoff_stat = SimulationPlayoffSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
 
-            # Update assist stats since the record exists from the simulation initiation
-            if skater_stat
-                skater_stat.update(
-                    assists: skater_stat.assists + 1,
-                    points: skater_stat.points + 1,
-                    powerPlayPoints: is_powerplay ? skater_stat.powerPlayPoints + 1 : skater_stat.powerPlayPoints
-                )
+                # Update assist stats since the record exists from the playoff initiation
+                if skater_playoff_stat
+                    skater_playoff_stat.update(
+                        assists: skater_playoff_stat.assists + 1,
+                        points: skater_playoff_stat.points + 1,
+                        powerPlayPoints: is_powerplay ? skater_playoff_stat.powerPlayPoints + 1 : skater_playoff_stat.powerPlayPoints
+                    )
+                end
+            else
+                skater_stat = SimulationSkaterStat.find_by(simulationID: simulation_id, playerID: skater["playerID"])
+
+                # Update assist stats since the record exists from the simulation initiation
+                if skater_stat
+                    skater_stat.update(
+                        assists: skater_stat.assists + 1,
+                        points: skater_stat.points + 1,
+                        powerPlayPoints: is_powerplay ? skater_stat.powerPlayPoints + 1 : skater_stat.powerPlayPoints
+                    )
+                end
             end
         end
 
-        # Save winning goalie simulated stats to SimulationGoalieStats database
-        def save_simulation_goalie_stats_win(simulation_id, goalie, goals_allowed)
-            # Find the current simulation goalie stats from the database
-            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
+        # Save winning goalie simulated stats to database
+        def save_simulation_goalie_stats_win(simulation_id, goalie, goals_allowed, is_playoffs)
+            # Find the current simulation goalie stats from the database based on whether or not it is playoffs
+            if is_playoffs
+                goalie_playoff_stat = SimulationPlayoffGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
 
-            # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
-            total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)
-            total_goals_allowed += goals_allowed
-            new_goals_against_per_game = total_goals_allowed / goalie_stat.gamesPlayed.to_f
+                # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
+                total_goals_allowed = goalie_playoff_stat.goalsAgainstPerGame * (goalie_playoff_stat.gamesPlayed - 1)
+                total_goals_allowed += goals_allowed
+                new_goals_against_per_game = total_goals_allowed / goalie_playoff_stat.gamesPlayed.to_f
 
-            # Update win and goalie stats since the record exists from the simulation initiation
-            if goalie_stat
-                goalie_stat.update(
-                    wins: goalie_stat.wins + 1,
-                    goalsAgainstPerGame: new_goals_against_per_game,
-                    shutouts: goals_allowed == 0 ? goalie_stat.shutouts + 1 : goalie_stat.shutouts
-                )
+                # Update win and goalie stats since the record exists from the playoff initiation
+                if goalie_playoff_stat
+                    goalie_playoff_stat.update(
+                        wins: goalie_playoff_stat.wins + 1,
+                        goalsAgainstPerGame: new_goals_against_per_game,
+                        shutouts: goals_allowed == 0 ? goalie_playoff_stat.shutouts + 1 : goalie_playoff_stat.shutouts
+                    )
+                end
+            else
+                goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
+
+                # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
+                total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)
+                total_goals_allowed += goals_allowed
+                new_goals_against_per_game = total_goals_allowed / goalie_stat.gamesPlayed.to_f
+
+                # Update win and goalie stats since the record exists from the simulation initiation
+                if goalie_stat
+                    goalie_stat.update(
+                        wins: goalie_stat.wins + 1,
+                        goalsAgainstPerGame: new_goals_against_per_game,
+                        shutouts: goals_allowed == 0 ? goalie_stat.shutouts + 1 : goalie_stat.shutouts
+                    )
+                end
             end
         end
 
-        # Save losing goalie simulated stats to SimulationGoalieStats database
-        def save_simulation_goalie_stats_loss(simulation_id, goalie, goals_allowed, required_ot)
-            # Find the current simulation goalie stats from the database
-            goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
+        # Save losing goalie simulated stats to database
+        def save_simulation_goalie_stats_loss(simulation_id, goalie, goals_allowed, required_ot, is_playoffs)
+            # Find the current simulation goalie stats from the database based on whether or not it is playoffs
+            if is_playoffs 
+                goalie_playoff_stat = SimulationPlayoffGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
 
-            # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
-            total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)
-            total_goals_allowed += goals_allowed
-            new_goals_against_per_game = total_goals_allowed / goalie_stat.gamesPlayed.to_f
+                # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
+                total_goals_allowed = goalie_playoff_stat.goalsAgainstPerGame * (goalie_playoff_stat.gamesPlayed - 1)
+                total_goals_allowed += goals_allowed
+                new_goals_against_per_game = total_goals_allowed / goalie_playoff_stat.gamesPlayed.to_f
 
-            # Update loss and goalie stats since the record exists from the simulation initiation
-            if goalie_stat
-                goalie_stat.update(
-                    losses: required_ot ? goalie_stat.losses : goalie_stat.losses + 1,
-                    otLosses: required_ot ? goalie_stat.otLosses + 1 : goalie_stat.otLosses,
-                    goalsAgainstPerGame: new_goals_against_per_game,
-                    shutouts: goals_allowed == 0 ? goalie_stat.shutouts + 1 : goalie_stat.shutouts
-                )
+                # Update loss and goalie stats since the record exists from the playoff initiation
+                if goalie_playoff_stat
+                    goalie_playoff_stat.update(
+                        losses: required_ot ? goalie_playoff_stat.losses : goalie_playoff_stat.losses + 1,
+                        otLosses: required_ot ? goalie_playoff_stat.otLosses + 1 : goalie_playoff_stat.otLosses,
+                        goalsAgainstPerGame: new_goals_against_per_game,
+                        shutouts: goals_allowed == 0 ? goalie_playoff_stat.shutouts + 1 : goalie_playoff_stat.shutouts
+                    )
+                end
+            else
+                goalie_stat = SimulationGoalieStat.find_by(simulationID: simulation_id, playerID: goalie["playerID"])
+
+                # Find out the total goals allowed before the current game and add the new amount of goals allowed to calculate the new average
+                total_goals_allowed = goalie_stat.goalsAgainstPerGame * (goalie_stat.gamesPlayed - 1)
+                total_goals_allowed += goals_allowed
+                new_goals_against_per_game = total_goals_allowed / goalie_stat.gamesPlayed.to_f
+
+                # Update loss and goalie stats since the record exists from the simulation initiation
+                if goalie_stat
+                    goalie_stat.update(
+                        losses: required_ot ? goalie_stat.losses : goalie_stat.losses + 1,
+                        otLosses: required_ot ? goalie_stat.otLosses + 1 : goalie_stat.otLosses,
+                        goalsAgainstPerGame: new_goals_against_per_game,
+                        shutouts: goals_allowed == 0 ? goalie_stat.shutouts + 1 : goalie_stat.shutouts
+                    )
+                end
             end
         end
     end

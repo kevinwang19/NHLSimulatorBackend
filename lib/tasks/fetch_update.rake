@@ -3,12 +3,12 @@ require_relative "../../config/constants"
 namespace :app do
     desc "Fetch and save updated data"
     task fetch_update: :environment do
-        @web_api_client = WebApiClient.new
+        @web_api_client = Api::WebApiClient.new
 
         current_date = Time.now
 
         # If the current month is before September, use the previous season, otherwise use the next season
-        if current_date.month < SEPTEMBER_MONTH
+        if current_date.month < OCTOBER_MONTH
             current_season = "#{current_date.year - 1}#{current_date.year}".to_i
         else
             current_season = "#{current_date.year}#{current_date.year + 1}".to_i
@@ -57,7 +57,7 @@ namespace :app do
 
         puts "Updating ratings for all players..."
 
-        ratings_generator = RatingsGenerator.new
+        ratings_generator = Management::RatingsGenerator.new
 
         # Group players by team
         players_by_team = players.group_by(&:teamID)
@@ -73,7 +73,7 @@ namespace :app do
     def update_lineups()
         puts "Updating lineups for all teams..."
 
-        lineups_generator = LineupsGenerator.new
+        lineups_generator = Management::LineupsGenerator.new
 
         # Group players by team
         players_by_team = Player.all.group_by(&:teamID)

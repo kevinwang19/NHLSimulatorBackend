@@ -95,10 +95,10 @@ def train_and_save_models():
     goalie_predictor_train, goalie_predictor_test, goalie_response_train, goalie_response_test = train_test_split(goalie_predictor_scaled, goalie_response, test_size=0.2)
 
     # Model training using Linear Regression
-    skater_model = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42) 
+    skater_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42) 
     skater_model.fit(skater_predictor_train, skater_response_train)
 
-    goalie_model = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42) 
+    goalie_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42) 
     goalie_model.fit(goalie_predictor_train, goalie_response_train)
     
     # Remove existing joblib files

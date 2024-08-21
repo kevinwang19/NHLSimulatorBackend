@@ -2,6 +2,7 @@ Rails.application.routes.draw do
     # Routes for schedules
     get "schedules/team_date_schedule", to: "schedules#team_date_schedule", as: "team_date_schedule"
     get "schedules/team_month_schedules", to: "schedules#team_month_schedules", as: "team_month_schedules"
+    get "schedules/last_schedule", to: "schedules#last_schedule", as: "last_schedule"
 
     # Routes for teams
     get "teams", to: "teams#index", as: "all_teams"
@@ -35,12 +36,10 @@ Rails.application.routes.draw do
     get "simulations/user_simulation", to: "simulations#user_simulation", as: "user_recent_simulation"
 
     # Routes for simulation skater stats
-    get "simulation_skater_stats/simulation_individual_stat", to: "simulation_skater_stats#simulation_individual_stat", as: "simulation_individual_skaterstat"
     get "simulation_skater_stats/simulation_team_stats", to: "simulation_skater_stats#simulation_team_stats", as: "simulation_team_skater_stats"
     get "simulation_skater_stats/simulation_team_position_stats", to: "simulation_skater_stats#simulation_team_position_stats", as: "simulation_team_position_stats"
   
     # Routes for simulation goalie stats
-    get "simulation_goalie_stats/simulation_individual_stat", to: "simulation_goalie_stats#simulation_individual_stat", as: "simulation_individual_goalie_stat"
     get "simulation_goalie_stats/simulation_team_stats", to: "simulation_goalie_stats#simulation_team_stats", as: "simulation_team_goalie_stats"
   
     # Routes for simulation team stats
@@ -51,4 +50,31 @@ Rails.application.routes.draw do
 
     # Routes for simulation game stats
     get "simulation_game_stats/team_simulated_game_stats", to: "simulation_game_stats#team_simulated_game_stats", as: "team_simulated_game_stats"
+
+    # Routes for playoff schedules
+    post "playoff_schedules/create_round_1_playoff_schedules", to: "playoff_schedules#create_round_1_playoff_schedules", as: "create_round_1_playoff_schedules"
+    get "playoff_schedules/last_round_1_playoff_schedule", to: "playoff_schedules#last_round_1_playoff_schedule", as: "last_round_1_playoff_schedule"
+    post "playoff_schedules/create_round_2_playoff_schedules", to: "playoff_schedules#create_round_2_playoff_schedules", as: "create_round_2_playoff_schedules"
+    get "playoff_schedules/last_round_2_playoff_schedule", to: "playoff_schedules#last_round_2_playoff_schedule", as: "last_round_2_playoff_schedule"
+    post "playoff_schedules/create_round_3_playoff_schedules", to: "playoff_schedules#create_round_3_playoff_schedules", as: "create_round_3_playoff_schedules"
+    get "playoff_schedules/last_round_3_playoff_schedule", to: "playoff_schedules#last_round_3_playoff_schedule", as: "last_round_3_playoff_schedule"
+    post "playoff_schedules/create_round_4_playoff_schedules", to: "playoff_schedules#create_round_4_playoff_schedules", as: "create_round_4_playoff_schedules"
+    get "playoff_schedules/last_round_4_playoff_schedule", to: "playoff_schedules#last_round_4_playoff_schedule", as: "last_round_4_playoff_schedule"
+    delete "playoff_schedules/delete_extra_playoff_schedules", to: "playoff_schedules#delete_extra_playoff_schedules", as: "delete_extra_playoff_schedules"
+    get "playoff_schedules/team_date_playoff_schedule", to: "playoff_schedules#team_date_playoff_schedule", as: "team_date_playoff_schedule"
+    get "playoff_schedules/team_month_playoff_schedules", to: "playoff_schedules#team_month_playoff_schedules", as: "team_month_playoff_schedules"
+    get "playoff_schedules/team_simulated_playoff_game_stats", to: "playoff_schedules#team_simulated_playoff_game_stats", as: "team_simulated_playoff_game_stats"
+
+    # Routes for simulation playoff skater stats
+    get "simulation_playoff_skater_stats/simulation_team_playoff_stats", to: "simulation_playoff_skater_stats#simulation_team_playoff_stats", as: "simulation_team_playoff_skater_stats"
+    get "simulation_playoff_skater_stats/simulation_team_position_playoff_stats", to: "simulation_playoff_skater_stats#simulation_team_position_playoff_stats", as: "simulation_team_position_playoff_stats"
+  
+    # Routes for simulation playoff goalie stats
+    get "simulation_playoff_goalie_stats/simulation_team_playoff_stats", to: "simulation_playoff_goalie_stats#simulation_team_playoff_stats", as: "simulation_team_playoff_goalie_stats"
+  
+    # Routes for simulation playoff team stats
+    get "simulation_playoff_team_stats/playoff_team_simulated_stats", to: "simulation_playoff_team_stats#playoff_team_simulated_stats", as: "playoff_team_simulated_stats"
+    get "simulation_playoff_team_stats/simulation_all_playoff_stats", to: "simulation_playoff_team_stats#simulation_all_playoff_stats", as: "all_playoff_teams_simulated_stats"
+    get "simulation_playoff_team_stats/simulation_conference_playoff_stats", to: "simulation_playoff_team_stats#simulation_conference_playoff_stats", as: "conference_playoff_teams_simulated_stats"
+    get "simulation_playoff_team_stats/simulation_playoff_tree", to: "simulation_playoff_team_stats#simulation_playoff_tree", as: "playoff_tree"
 end

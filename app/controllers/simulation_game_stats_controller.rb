@@ -1,8 +1,6 @@
 class SimulationGameStatsController < ApplicationController
     # GET /simulation_game_stats/team_simulated_game_stats?simulationID=:simulationID&currentDate=:currentDate&teamID=:teamID&season=:season
     def team_simulated_game_stats
-        date = Date.parse(params[:currentDate])
-
         schedules = Schedule.where(
             "(\"awayTeamID\" = :teamID OR \"homeTeamID\" = :teamID) AND season = :season AND date < :currentDate", 
             teamID: params[:teamID], 

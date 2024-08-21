@@ -30,4 +30,15 @@ class SchedulesController < ApplicationController
             render json: { error: "Month schedule not found for the team" }, status: :not_found
         end
     end
+
+    # GET /schedules/last_schedule?season=:season
+    def last_schedule
+        @schedule = Schedule.where(season: params[:season]).last
+  
+        if @schedule
+            render json: @schedule
+        else
+            render json: { error: "Last schedule not found" }, status: :not_found
+        end
+    end
 end

@@ -1,61 +1,110 @@
 module Sim
     class SimulatorTeamStats
         # Save winning team simulated stats to SimulationTeamStats database
-        def save_team_stats_win(simulation_id, team_id, goals_scored, goals_allowed, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
-            # Find the current simulation team stats from the database
-            team_stat = SimulationTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
+        def save_team_stats_win(simulation_id, team_id, goals_scored, goals_allowed, pp_goals_scored, num_pps, pk_goals_allowed, num_pks, is_playoffs)
+            if is_playoffs
+                # Find the current simulation playoff team stats from the database
+                team_stat = SimulationPlayoffTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
 
-            if team_stat
-                # Get the team special teams stats
-                new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
+                if team_stat
+                    # Get the team special teams stats
+                    new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
-                # Update team ranks and standings info
-                update_team_standing_stats(simulation_id)
+                    # Update winning team stats since the record exists from the initial games played addition/update
+                    team_stat.update(
+                        gamesPlayed: team_stat.gamesPlayed + 1,
+                        wins: team_stat.wins + 1,
+                        goalsFor: team_stat.goalsFor + goals_scored,
+                        goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
+                        goalsAgainst: team_stat.goalsAgainst + goals_allowed,
+                        goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
+                        totalPowerPlays: new_total_pps,
+                        powerPlayPctg: new_pp_pctg,
+                        totalPenaltyKills: new_total_pks,
+                        penaltyKillPctg: new_pk_pctg
+                    )
+                end
+            else
+                # Find the current simulation team stats from the database
+                team_stat = SimulationTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
 
-                # Update winning team stats since the record exists from the initial games played addition/update
-                team_stat.update(
-                    gamesPlayed: team_stat.gamesPlayed + 1,
-                    wins: team_stat.wins + 1,
-                    points: team_stat.points + 2,
-                    goalsFor: team_stat.goalsFor + goals_scored,
-                    goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
-                    goalsAgainst: team_stat.goalsAgainst + goals_allowed,
-                    goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
-                    totalPowerPlays: new_total_pps,
-                    powerPlayPctg: new_pp_pctg,
-                    totalPenaltyKills: new_total_pks,
-                    penaltyKillPctg: new_pk_pctg
-                )
+                if team_stat
+                    # Get the team special teams stats
+                    new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
+
+                    # Update team ranks and standings info
+                    update_team_standing_stats(simulation_id)
+
+                    # Update winning team stats since the record exists from the initial games played addition/update
+                    team_stat.update(
+                        gamesPlayed: team_stat.gamesPlayed + 1,
+                        wins: team_stat.wins + 1,
+                        points: team_stat.points + 2,
+                        goalsFor: team_stat.goalsFor + goals_scored,
+                        goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
+                        goalsAgainst: team_stat.goalsAgainst + goals_allowed,
+                        goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
+                        totalPowerPlays: new_total_pps,
+                        powerPlayPctg: new_pp_pctg,
+                        totalPenaltyKills: new_total_pks,
+                        penaltyKillPctg: new_pk_pctg
+                    )
+                end
             end
         end
 
         # Save losing team simulated stats to SimulationTeamStats database
-        def save_team_stats_loss(simulation_id, team_id, goals_scored, goals_allowed, pp_goals_scored, num_pps, pk_goals_allowed, num_pks, required_ot)
-            # Find the current simulation team stats from the database
-            team_stat = SimulationTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
+        def save_team_stats_loss(simulation_id, team_id, goals_scored, goals_allowed, pp_goals_scored, num_pps, pk_goals_allowed, num_pks, required_ot, is_playoffs)
+            if is_playoffs
+                # Find the current simulation playoff team stats from the database
+                team_stat = SimulationPlayoffTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
 
-            if team_stat
-                # Get the team special teams stats
-                new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
+                if team_stat
+                    # Get the team special teams stats
+                    new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
 
-                # Update team ranks and standings info
-                update_team_standing_stats(simulation_id)
+                    # Update winning team stats since the record exists from the initial games played addition/update
+                    team_stat.update(
+                        gamesPlayed: team_stat.gamesPlayed + 1,
+                        losses: required_ot ? team_stat.losses : team_stat.losses + 1,
+                        otLosses: required_ot ? team_stat.otLosses + 1 : team_stat.otLosses,
+                        goalsFor: team_stat.goalsFor + goals_scored,
+                        goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
+                        goalsAgainst: team_stat.goalsAgainst + goals_allowed,
+                        goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
+                        totalPowerPlays: new_total_pps,
+                        powerPlayPctg: new_pp_pctg,
+                        totalPenaltyKills: new_total_pks,
+                        penaltyKillPctg: new_pk_pctg
+                    )
+                end
+            else
+                # Find the current simulation team stats from the database
+                team_stat = SimulationTeamStat.find_by(simulationID: simulation_id, teamID: team_id)
 
-                # Update winning team stats since the record exists from the initial games played addition/update
-                team_stat.update(
-                    gamesPlayed: team_stat.gamesPlayed + 1,
-                    losses: required_ot ? team_stat.losses : team_stat.losses + 1,
-                    otLosses: required_ot ? team_stat.otLosses + 1 : team_stat.otLosses,
-                    points: required_ot ? team_stat.points + 1 : team_stat.points,
-                    goalsFor: team_stat.goalsFor + goals_scored,
-                    goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
-                    goalsAgainst: team_stat.goalsAgainst + goals_allowed,
-                    goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
-                    totalPowerPlays: new_total_pps,
-                    powerPlayPctg: new_pp_pctg,
-                    totalPenaltyKills: new_total_pks,
-                    penaltyKillPctg: new_pk_pctg
-                )
+                if team_stat
+                    # Get the team special teams stats
+                    new_total_pps, new_pp_pctg, new_total_pks, new_pk_pctg = get_team_special_teams_stats(team_stat, pp_goals_scored, num_pps, pk_goals_allowed, num_pks)
+
+                    # Update team ranks and standings info
+                    update_team_standing_stats(simulation_id)
+
+                    # Update winning team stats since the record exists from the initial games played addition/update
+                    team_stat.update(
+                        gamesPlayed: team_stat.gamesPlayed + 1,
+                        losses: required_ot ? team_stat.losses : team_stat.losses + 1,
+                        otLosses: required_ot ? team_stat.otLosses + 1 : team_stat.otLosses,
+                        points: required_ot ? team_stat.points + 1 : team_stat.points,
+                        goalsFor: team_stat.goalsFor + goals_scored,
+                        goalsForPerGame: (team_stat.goalsFor + goals_scored) / (team_stat.gamesPlayed + 1).to_f,
+                        goalsAgainst: team_stat.goalsAgainst + goals_allowed,
+                        goalsAgainstPerGame: (team_stat.goalsAgainst + goals_allowed) / (team_stat.gamesPlayed + 1).to_f,
+                        totalPowerPlays: new_total_pps,
+                        powerPlayPctg: new_pp_pctg,
+                        totalPenaltyKills: new_total_pks,
+                        penaltyKillPctg: new_pk_pctg
+                    )
+                end
             end
         end
 

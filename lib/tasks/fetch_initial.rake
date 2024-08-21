@@ -7,13 +7,13 @@ namespace :app do
     task fetch_initial: :environment do
         include CsvExporter
 
-        @web_api_client = WebApiClient.new
-        @api_client = ApiClient.new
+        @web_api_client = Api::WebApiClient.new
+        @api_client = Api::ApiClient.new
 
         current_date = Time.now
 
         # If the current month is before September, fetch everything for the season that just passed, otherwise fetch the next season
-        if current_date.month < SEPTEMBER_MONTH
+        if current_date.month < AUGUST_MONTH
             start_date = Date.new((current_date.year - 1).to_i, OCTOBER_MONTH, MONTH_1ST)
             end_date = Date.new((current_date.year).to_i, APRIL_MONTH, MONTH_30TH)
         else
@@ -101,7 +101,7 @@ namespace :app do
         export_to_csv("skater_stats")
         export_to_csv("goalie_stats")
 
-        ml_client = MlClient.new
+        ml_client = Ml::MlClient.new
 
         # Get distinct players that have new stats to be used for predictions
         different_stats = updated_stats - current_stats
@@ -115,7 +115,7 @@ namespace :app do
 
         puts "Preparing ratings for all players..."
 
-        ratings_generator = RatingsGenerator.new
+        ratings_generator = Management::RatingsGenerator.new
 
         # Group players by team
         players_by_team = players.group_by(&:teamID)
@@ -131,7 +131,7 @@ namespace :app do
     def fetch_lineups()
         puts "Preparing lineups for all teams..."
 
-        lineups_generator = LineupsGenerator.new
+        lineups_generator = Management::LineupsGenerator.new
 
         # Group players by team
         players_by_team = Player.all.group_by(&:teamID)

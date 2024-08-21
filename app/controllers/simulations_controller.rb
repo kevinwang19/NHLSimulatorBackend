@@ -6,7 +6,7 @@ class SimulationsController < ApplicationController
         @simulation = Simulation.new(simulation_params)
         current_date = Time.now
 
-        if current_date.month < SEPTEMBER_MONTH
+        if current_date.month < AUGUST_MONTH
             simulation_start_year = current_date.year - 1
             simulation_end_year = current_date.year
         else
@@ -44,25 +44,40 @@ class SimulationsController < ApplicationController
         params.require(:simulation).permit(:userID)
     end
 
-    # PUT /simulations/simulate_to_date?simulationID=:simulationID&simulateDate=:simulateDate&playersAndLineups=:playersAndLineups
+    # PUT /simulations/simulate_to_date?simulationID=:simulationID&simulateDate=:simulateDate&playersAndLineups=:playersAndLineups&isPlayoffs=:isPlayoffs
     def simulate_to_date
         simulation_id = params.require(:simulationID)
         simulate_date = params.require(:simulateDate)
         players_and_lineups = params.require(:playersAndLineups)
+        is_playoffs = params.require(:isPlayoffs)
 
         @simulation = Simulation.find_by(simulationID: simulation_id)
 
         if @simulation
-            game_simulator = Sim::GameSimulator.new(@simulation)
-            begin
-                game_simulator.simulate_games(players_and_lineups)
-                if @simulation.update(simulationCurrentDate: simulate_date)
-                    render json: @simulation, status: :ok
-                else
-                    render json: { error: "Failed to update simulation" }, status: :unprocessable_entity
+            if is_playoffs
+                playoff_game_simulator = Sim::PlayoffGameSimulator.new(@simulation)
+                begin
+                    playoff_game_simulator.simulate_playoff_games(players_and_lineups)
+                    if @simulation.update(simulationCurrentDate: simulate_date)
+                        render json: @simulation, status: :ok
+                    else
+                        render json: { error: "Failed to update simulation" }, status: :unprocessable_entity
+                    end
+                rescue => e
+                    render json: { error: "Playoff simulation error: #{e.message}" }, status: :unprocessable_entity
                 end
-            rescue => e
-                render json: { error: "Simulation error: #{e.message}" }, status: :unprocessable_entity
+            else
+                game_simulator = Sim::GameSimulator.new(@simulation)
+                begin
+                    game_simulator.simulate_games(players_and_lineups)
+                    if @simulation.update(simulationCurrentDate: simulate_date)
+                        render json: @simulation, status: :ok
+                    else
+                        render json: { error: "Failed to update simulation" }, status: :unprocessable_entity
+                    end
+                rescue => e
+                    render json: { error: "Simulation error: #{e.message}" }, status: :unprocessable_entity
+                end
             end
         else
             render json: { error: "Simulation not found" }, status: :not_found
