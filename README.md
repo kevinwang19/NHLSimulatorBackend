@@ -29,7 +29,7 @@ Setup:
         export PATH=$HOME/gems/bin:$PATH
         alias python=/usr/bin/python3
 
-* Run Server: rails server
+* Run Server: rails server -b 0.0.0.0
   
 * Fetch initial schedules, teams, players, stats, ratings, lineups: rails app:fetch_initial
   
