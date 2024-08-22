@@ -74,10 +74,20 @@ module Sim
             player_ids = players.map { |player| player["playerID"] }
             predicted_stats = SkaterStatsPrediction.where(playerID: player_ids)
 
+            return players[0] if predicted_stats.empty?
+
             # Get the goal to point ratios of the players predicted stat to see who is more likely to score
-            total_goal_to_point_ratios = predicted_stats.sum { |stat| stat.goals.to_f / (stat.points || 1) }
-            goal_to_point_ratios = predicted_stats.map { |stat| (stat.goals.to_f / (stat.points || 1)) / (total_goal_to_point_ratios || 1) }
-        
+            total_goal_to_point_ratios = predicted_stats.sum do |stat|
+                stat.points && stat.points > 0 ? stat.goals.to_f / stat.points : 0
+            end
+
+            return players[0] if total_goal_to_point_ratios.zero?
+
+            goal_to_point_ratios = predicted_stats.map do |stat|
+                ratio = stat.points && stat.points > 0 ? stat.goals.to_f / stat.points : 0
+                ratio / total_goal_to_point_ratios
+            end
+
             selection_point = rand
             cumulative_ratio = 0.0
             selected_stat = nil
@@ -90,6 +100,8 @@ module Sim
                     break
                 end
             end
+            
+            return players[0] unless selected_stat
             
             # Get the player from the player stat
             player = Player.find_by(playerID: selected_stat.playerID)

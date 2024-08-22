@@ -257,11 +257,11 @@ module Sim
                 winning_goalie = home_team_goalie
                 losing_goalie = away_team_goalie
             end
-            
+
             # Record goalie stats from the game
             @simulation_player_stats.save_simulation_goalie_stats_win(@simulation_info.simulationID, winning_goalie, losing_team_score, is_playoffs)
             @simulation_player_stats.save_simulation_goalie_stats_loss(@simulation_info.simulationID, losing_goalie, winning_team_score, required_ot, is_playoffs)
-            
+
             # Record game stats
             @simulation_game_stats.save_game_stats(
                 @simulation_info.simulationID, 
